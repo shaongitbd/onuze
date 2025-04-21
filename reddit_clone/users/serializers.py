@@ -39,18 +39,78 @@ class UserCreateSerializer(serializers.ModelSerializer):
     """
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password_confirmation = serializers.CharField(write_only=True, required=True)
+    captcha = serializers.CharField(write_only=True, required=True)
     
     class Meta:
         model = User
         fields = [
             'username', 'email', 'password', 'password_confirmation',
-            'bio', 'avatar'
+            'bio', 'avatar', 'captcha'
         ]
     
     def validate(self, attrs):
         if attrs['password'] != attrs.pop('password_confirmation'):
             raise serializers.ValidationError({"password": "Password fields didn't match."})
+        
+        # Validate CAPTCHA
+        captcha_token = attrs.pop('captcha')
+        self.validate_captcha(captcha_token)
+        
         return attrs
+    
+    def validate_captcha(self, value):
+        """
+        Validate the CAPTCHA token with the server.
+        """
+        from django.conf import settings
+        import requests
+        
+        # Check if CAPTCHA validation is enabled
+        if not getattr(settings, 'CAPTCHA_ENABLED', True):
+            return True
+            
+        # For Django Simple Captcha
+        if getattr(settings, 'SIMPLE_CAPTCHA_ENABLED', False):
+            from captcha.fields import CaptchaField
+            try:
+                captcha_field = CaptchaField()
+                captcha_field.clean(value)
+                return True
+            except Exception as e:
+                raise serializers.ValidationError(f"Invalid CAPTCHA: {str(e)}")
+        
+        # For reCAPTCHA
+        elif getattr(settings, 'RECAPTCHA_ENABLED', False):
+            recaptcha_secret = getattr(settings, 'RECAPTCHA_SECRET_KEY', '')
+            if not recaptcha_secret:
+                # Log warning but allow registration without verification if not configured
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning("reCAPTCHA is enabled but secret key is not configured")
+                return True
+                
+            try:
+                # Verify with reCAPTCHA API
+                response = requests.post(
+                    'https://www.google.com/recaptcha/api/siteverify',
+                    data={
+                        'secret': recaptcha_secret,
+                        'response': value
+                    }
+                )
+                result = response.json()
+                
+                if not result.get('success', False):
+                    error_codes = result.get('error-codes', [])
+                    raise serializers.ValidationError(f"CAPTCHA verification failed: {', '.join(error_codes)}")
+                
+                return True
+            except Exception as e:
+                if isinstance(e, serializers.ValidationError):
+                    raise
+                raise serializers.ValidationError(f"CAPTCHA verification error: {str(e)}")
+        
+        return True
     
     def create(self, validated_data):
         user = User.objects.create_user(

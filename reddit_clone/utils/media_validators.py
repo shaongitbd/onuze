@@ -31,6 +31,98 @@ MAX_DOCUMENT_SIZE = 10 * 1024 * 1024  # 10 MB
 # Default upload directory
 DEFAULT_UPLOAD_DIR = 'media/uploads/'
 
+# Try to import pyclamd for virus scanning
+try:
+    import pyclamd
+    CLAMAV_ENABLED = True
+except ImportError:
+    CLAMAV_ENABLED = False
+
+
+def scan_file_for_malware(file):
+    """
+    Scan a file for malware using ClamAV.
+    
+    Args:
+        file: The uploaded file object
+        
+    Returns:
+        bool: True if file is clean, False if infected
+        
+    Raises:
+        ValidationError: If file is infected or ClamAV is not available
+    """
+    if not CLAMAV_ENABLED:
+        # Log that ClamAV is not available but allow the upload
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning("ClamAV is not available for virus scanning. Skipping scan.")
+        return True
+    
+    # Try to connect to ClamAV daemon
+    try:
+        # Try to connect to local socket first
+        clam = pyclamd.ClamdUnixSocket()
+        # Test connection
+        clam.ping()
+    except Exception:
+        try:
+            # Fall back to network socket
+            clam = pyclamd.ClamdNetworkSocket()
+            clam.ping()
+        except Exception as e:
+            # Log that ClamAV is not responding but allow the upload
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"ClamAV daemon is not responding: {str(e)}. Skipping scan.")
+            return True
+    
+    # Store the file content to a temporary file for scanning
+    try:
+        # Reset file pointer
+        file.seek(0)
+        
+        # Read file content
+        file_content = file.read()
+        
+        # Reset file pointer again
+        file.seek(0)
+        
+        # Create a unique temp filename
+        temp_filename = f"/tmp/clamd_temp_{uuid.uuid4().hex}"
+        
+        # Write content to temp file
+        with open(temp_filename, 'wb') as temp_file:
+            temp_file.write(file_content)
+        
+        # Scan the file
+        scan_result = clam.scan_file(temp_filename)
+        
+        # Remove temp file
+        try:
+            os.unlink(temp_filename)
+        except Exception:
+            pass
+        
+        # Check scan result
+        if scan_result:
+            # File is infected - scan_result will be {filename: (FOUND: virusname)}
+            virus_name = scan_result[temp_filename][1]
+            raise ValidationError(f"Security threat detected: {virus_name}. Upload rejected.")
+        
+        # File is clean
+        return True
+        
+    except ValidationError:
+        # Re-raise validation errors
+        raise
+    except Exception as e:
+        # Log other errors and allow upload (fail open for usability, but log the issue)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error during virus scan: {str(e)}. Allowing file with caution.")
+        return True
+
 
 def validate_file_type(file, allowed_types):
     """
@@ -157,6 +249,7 @@ def validate_image(file):
     validate_file_type(file, ALLOWED_IMAGE_TYPES)
     validate_file_extension(file.name, ALLOWED_IMAGE_TYPES)
     validate_file_size(file, MAX_IMAGE_SIZE)
+    scan_file_for_malware(file)
 
 
 def validate_video(file):
@@ -172,6 +265,7 @@ def validate_video(file):
     validate_file_type(file, ALLOWED_VIDEO_TYPES)
     validate_file_extension(file.name, ALLOWED_VIDEO_TYPES)
     validate_file_size(file, MAX_VIDEO_SIZE)
+    scan_file_for_malware(file)
 
 
 def validate_document(file):
@@ -187,6 +281,7 @@ def validate_document(file):
     validate_file_type(file, ALLOWED_DOCUMENT_TYPES)
     validate_file_extension(file.name, ALLOWED_DOCUMENT_TYPES)
     validate_file_size(file, MAX_DOCUMENT_SIZE)
+    scan_file_for_malware(file)
 
 
 def upload_image(instance, file, upload_dir=DEFAULT_UPLOAD_DIR):

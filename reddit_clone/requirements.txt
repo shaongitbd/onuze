@@ -1,33 +1,51 @@
-Django==5.0.0
-djangorestframework==3.14.0
-django-cors-headers==4.3.1
-django-filter==23.5
-Pillow==10.1.0
-djoser==2.2.2
-djangorestframework-simplejwt==5.3.1
-django-environ==0.11.2
-django-axes==6.1.1
-django-ratelimit==4.1.0
-channels==4.0.0
-channels-redis==4.1.0
-django-guardian==2.4.0
-drf-yasg==1.21.7
-argon2-cffi==23.1.0
-bleach==6.1.0
-psycopg2-binary==2.9.9
-redis==5.0.1
-daphne==4.0.0
-markdown==3.5.1
-python-magic==0.4.27
-pyotp==2.9.0
-qrcode==7.4.2
+# Core
+Django>=5.0.0,<5.3.0
+djangorestframework>=3.14.0,<4.0.0
+djangorestframework-simplejwt>=5.3.0,<6.0.0
+djoser>=2.2.0,<3.0.0
+django-environ>=0.11.0,<1.0.0
+python-magic>=0.4.27,<0.5.0
+pyclamd>=0.4.0,<0.5.0
 
-# For development
-pytest==7.4.3
-pytest-django==4.7.0
-pytest-asyncio==0.23.2
-coverage==7.3.4
-factory-boy==3.3.0
-black==23.11.0
-flake8==6.1.0
-isort==5.12.0 
+# Authentication & Security
+django-axes>=6.1.0,<7.0.0
+django-cors-headers>=4.3.0,<5.0.0
+django-ratelimit>=4.1.0,<5.0.0
+django-guardian>=2.4.0,<3.0.0
+argon2-cffi>=23.1.0,<24.0.0
+django-simple-captcha>=0.6.0,<0.7.0
+bleach>=6.1.0,<7.0.0
+requests>=2.31.0,<3.0.0
+pyotp>=2.9.0,<3.0.0
+qrcode>=7.4.2,<8.0.0
+
+# API Documentation
+drf-yasg>=1.21.7,<2.0.0
+django-filter>=23.5,<24.0.0
+markdown>=3.5.1,<4.0.0
+
+# Real-time Features
+channels>=4.0.0,<5.0.0
+channels-redis>=4.1.0,<5.0.0
+redis>=5.0.0,<6.0.0
+
+# Database
+psycopg>=3.1.15,<4.0.0
+
+# Testing
+pytest>=7.4.3,<8.0.0
+pytest-django>=4.7.0,<5.0.0
+pytest-asyncio>=0.23.2,<0.24.0
+factory-boy>=3.3.0,<4.0.0
+coverage>=7.3.4,<8.0.0
+
+# Development
+black>=23.11.0,<24.0.0
+isort>=5.12.0,<6.0.0
+flake8>=6.1.0,<7.0.0
+mypy>=1.7.1,<2.0.0
+
+# Production
+gunicorn>=21.2.0,<22.0.0
+whitenoise>=6.6.0,<7.0.0
+Pillow>=10.1.0,<11.0.0 

@@ -35,6 +35,7 @@ api_v1_patterns = [
     path('moderation/', include('moderation.urls')),
     path('messages/', include('messaging.urls')),
     path('search/', include('search.urls')),
+    path('security/', include('security.urls')),
 ]
 
 urlpatterns = [
@@ -44,9 +45,13 @@ urlpatterns = [
     # API routes
     path('api/v1/', include(api_v1_patterns)),
     
-    # Authentication
+    # Authentication - using both cookie-based and standard JWT auth
     path('api/v1/auth/', include('djoser.urls')),
-    path('api/v1/auth/', include('djoser.urls.jwt')),
+    path('api/v1/auth/', include('djoser.urls.jwt')),  # Standard JWT auth (fallback)
+    path('api/v1/auth/', include('security.urls')),    # Cookie-based JWT auth (recommended)
+    
+    # CAPTCHA URLs
+    path('captcha/', include('captcha.urls')),
     
     # API documentation
     path('api/docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),

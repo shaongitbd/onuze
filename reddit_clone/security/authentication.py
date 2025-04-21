@@ -12,7 +12,36 @@ User = get_user_model()
 class CustomJWTAuthentication(JWTAuthentication):
     """
     Custom JWT authentication that checks for account status.
+    Supports both bearer tokens and HttpOnly cookies.
     """
+    def authenticate(self, request):
+        """
+        Try to authenticate the request using JWT from either:
+        1. Authorization header (Bearer token)
+        2. access_token cookie
+        """
+        # First try to authenticate using header (standard method)
+        try:
+            header_auth = super().authenticate(request)
+            if header_auth is not None:
+                return header_auth
+        except Exception:
+            pass  # Continue to cookie auth if header auth fails
+            
+        # If header auth fails, try cookie-based auth
+        raw_token = request.COOKIES.get('access_token')
+        
+        if raw_token is None:
+            return None
+            
+        # Validate token
+        try:
+            validated_token = self.get_validated_token(raw_token)
+            user = self.get_user(validated_token)
+            return (user, validated_token)
+        except Exception:
+            return None
+    
     def get_user(self, validated_token):
         """
         Attempt to find and return a user using the given validated token.
@@ -93,40 +122,47 @@ class TwoFactorAuthentication(BaseAuthentication):
         """
         Create or update a user session record.
         """
-        # Get token from JWT auth
+        # Get token from JWT auth or cookie
+        token = None
         auth_header = request.META.get('HTTP_AUTHORIZATION', '').split()
         if len(auth_header) == 2 and auth_header[0].lower() == 'bearer':
             token = auth_header[1]
+        else:
+            # Try to get from cookie
+            token = request.COOKIES.get('access_token')
             
-            # Get client info
-            ip_address = self._get_client_ip(request)
-            user_agent = request.META.get('HTTP_USER_AGENT', '')
+        if not token:
+            return
             
-            # Try to find existing session
-            try:
-                session = UserSession.objects.get(
-                    user=user,
-                    token=token
-                )
-                # Update last activity
-                session.update_activity()
-            except UserSession.DoesNotExist:
-                # Create new session
-                expires_at = timezone.now() + timezone.timedelta(days=7)  # Match refresh token lifetime
-                
-                UserSession.objects.create(
-                    user=user,
-                    token=token,
-                    ip_address=ip_address,
-                    user_agent=user_agent,
-                    expires_at=expires_at,
-                    device_info={
-                        'ip': ip_address,
-                        'user_agent': user_agent,
-                        'platform': self._extract_platform(user_agent),
-                        'browser': self._extract_browser(user_agent),
-                    }
-                )
+        # Get client info
+        ip_address = self._get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        
+        # Try to find existing session
+        try:
+            session = UserSession.objects.get(
+                user=user,
+                token=token
+            )
+            # Update last activity
+            session.update_activity()
+        except UserSession.DoesNotExist:
+            # Create new session
+            expires_at = timezone.now() + timezone.timedelta(days=7)  # Match refresh token lifetime
+            
+            UserSession.objects.create(
+                user=user,
+                token=token,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                expires_at=expires_at,
+                device_info={
+                    'ip': ip_address,
+                    'user_agent': user_agent,
+                    'platform': self._extract_platform(user_agent),
+                    'browser': self._extract_browser(user_agent),
+                }
+            )
     
     def _get_client_ip(self, request):
         """

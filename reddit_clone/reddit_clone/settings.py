@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'axes',
     'channels',
     'guardian',
+    'captcha',  # Django Simple Captcha
     
     # Local apps
     'users',
@@ -207,13 +208,15 @@ REST_FRAMEWORK = {
 # Simple JWT Settings
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
-    'ACCESS_TOKEN_LIFETIME': 60 * 15,  # 15 minutes
-    'REFRESH_TOKEN_LIFETIME': 60 * 60 * 24 * 7,  # 7 days
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
 }
 
 # CORS Settings
@@ -301,3 +304,44 @@ BLEACH_ALLOWED_PROTOCOLS = ['http', 'https', 'mailto']
 
 # Python Magic settings
 MAGIC_FILE_PATH = env('MAGIC_FILE_PATH', default=None)
+
+# CAPTCHA Settings
+CAPTCHA_ENABLED = True
+SIMPLE_CAPTCHA_ENABLED = True
+RECAPTCHA_ENABLED = False  # Enable if you want to use Google reCAPTCHA instead
+RECAPTCHA_PUBLIC_KEY = env('RECAPTCHA_PUBLIC_KEY', default='')
+RECAPTCHA_SECRET_KEY = env('RECAPTCHA_SECRET_KEY', default='')
+CAPTCHA_LENGTH = 6
+CAPTCHA_FONT_SIZE = 30
+CAPTCHA_LETTER_ROTATION = (-20, 20)
+CAPTCHA_BACKGROUND_COLOR = '#ffffff'
+CAPTCHA_FOREGROUND_COLOR = '#001100'
+CAPTCHA_NOISE_FUNCTIONS = ('captcha.helpers.noise_dots',)
+
+# Djoser Settings
+DJOSER = {
+    'PASSWORD_RESET_CONFIRM_URL': '#/password/reset/confirm/{uid}/{token}',  # Frontend URL
+    'USERNAME_RESET_CONFIRM_URL': '#/username/reset/confirm/{uid}/{token}', # Frontend URL
+    'ACTIVATION_URL': '#/activate/{uid}/{token}',                      # Frontend URL
+    'SEND_ACTIVATION_EMAIL': True,
+    'SEND_CONFIRMATION_EMAIL': True,
+    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,
+    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,
+    'USER_CREATE_PASSWORD_RETYPE': True,
+    'SET_PASSWORD_RETYPE': True,
+    'PASSWORD_RESET_CONFIRM_RETYPE': True,
+    'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS': [],
+    'SERIALIZERS': {
+        'user_create': 'users.serializers.UserCreateSerializer',
+        'user': 'users.serializers.UserSerializer',
+        'current_user': 'users.serializers.UserSerializer',
+    },
+    'EMAIL': {
+        'activation': 'djoser.email.ActivationEmail',
+        'confirmation': 'djoser.email.ConfirmationEmail',
+        'password_reset': 'djoser.email.PasswordResetEmail',
+        'password_changed_confirmation': 'djoser.email.PasswordChangedConfirmationEmail',
+        'username_changed_confirmation': 'djoser.email.UsernameChangedConfirmationEmail',
+        'username_reset': 'djoser.email.UsernameResetEmail',
+    }
+}

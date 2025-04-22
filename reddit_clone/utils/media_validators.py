@@ -1,6 +1,9 @@
 import os
 import uuid
 import magic
+import logging
+import pyclamd
+from datetime import datetime
 from django.core.exceptions import ValidationError
 from django.conf import settings
 
@@ -32,11 +35,12 @@ MAX_DOCUMENT_SIZE = 10 * 1024 * 1024  # 10 MB
 DEFAULT_UPLOAD_DIR = 'media/uploads/'
 
 # Try to import pyclamd for virus scanning
-try:
-    import pyclamd
-    CLAMAV_ENABLED = True
-except ImportError:
-    CLAMAV_ENABLED = False
+# try:
+#     import pyclamd
+#     CLAMAV_ENABLED = True
+# except ImportError:
+#     CLAMAV_ENABLED = False
+CLAMAV_ENABLED = 'pyclamd' in globals()
 
 
 def scan_file_for_malware(file):
@@ -54,7 +58,7 @@ def scan_file_for_malware(file):
     """
     if not CLAMAV_ENABLED:
         # Log that ClamAV is not available but allow the upload
-        import logging
+        # import logging
         logger = logging.getLogger(__name__)
         logger.warning("ClamAV is not available for virus scanning. Skipping scan.")
         return True
@@ -72,7 +76,7 @@ def scan_file_for_malware(file):
             clam.ping()
         except Exception as e:
             # Log that ClamAV is not responding but allow the upload
-            import logging
+            # import logging
             logger = logging.getLogger(__name__)
             logger.error(f"ClamAV daemon is not responding: {str(e)}. Skipping scan.")
             return True
@@ -118,7 +122,7 @@ def scan_file_for_malware(file):
         raise
     except Exception as e:
         # Log other errors and allow upload (fail open for usability, but log the issue)
-        import logging
+        # import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Error during virus scan: {str(e)}. Allowing file with caution.")
         return True
@@ -230,7 +234,7 @@ def get_upload_path(instance, filename, upload_dir=DEFAULT_UPLOAD_DIR):
     safe_filename = generate_safe_filename(filename)
     
     # Generate a directory structure based on current date
-    from datetime import datetime
+    # from datetime import datetime
     date_path = datetime.now().strftime('%Y/%m/%d')
     
     return os.path.join(upload_dir, date_path, safe_filename)

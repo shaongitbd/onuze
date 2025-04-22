@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, permissions, generics, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q
 from users.models import User
 from .models import PrivateMessage
@@ -125,7 +126,6 @@ class PrivateMessageViewSet(viewsets.ModelViewSet):
                 )
             else:
                 # User is not sender or recipient
-                from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You do not have permission to delete this message.")
                 
         except Exception as e:

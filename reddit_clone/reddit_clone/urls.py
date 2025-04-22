@@ -6,6 +6,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework import permissions
+from rest_framework.permissions import AllowAny
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
@@ -20,7 +21,7 @@ schema_view = get_schema_view(
         license=openapi.License(name="MIT License"),
     ),
     public=True,
-    permission_classes=(permissions.IsAdminUser,),
+    permission_classes=(AllowAny,),
 )
 
 # API URL patterns (v1)
@@ -36,6 +37,7 @@ api_v1_patterns = [
     path('messages/', include('messaging.urls')),
     path('search/', include('search.urls')),
     path('security/', include('security.urls')),
+    path('uploads/', include('uploads.urls')),
 ]
 
 urlpatterns = [

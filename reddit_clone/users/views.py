@@ -1,23 +1,39 @@
-from django.shortcuts import render
-from rest_framework import viewsets, generics, status, permissions
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth import get_user_model, login
+from django.http import HttpResponse, JsonResponse
+from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.utils import timezone
+from django.db.models import Count, Q
+import uuid
+import os
+import time
+import requests
+import logging
+import jwt
+from datetime import timedelta
+# from sendgrid import SendGridAPIClient
+# from sendgrid.helpers.mail import Mail
+from communities.models import Community, CommunityMember
+from security.models import RefreshToken, AuditLog
+from notifications.models import Notification
 from .models import Role, UserBlock
 from .serializers import (
-    UserSerializer, UserBriefSerializer, 
-    UserCreateSerializer, UserUpdateSerializer,
-    PasswordChangeSerializer, RoleSerializer,
+    UserSerializer, 
+    UserBriefSerializer, 
+    UserCreateSerializer, 
+    UserUpdateSerializer,
+    PasswordChangeSerializer, 
+    RoleSerializer,
     UserBlockSerializer
 )
-from security.models import AuditLog
-from django.utils import timezone
 import pyotp
 import qrcode
 import io
 import base64
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Q
 from django.http import HttpResponse
 from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -71,7 +87,6 @@ class UserViewSet(viewsets.ModelViewSet):
                 
                 # Send welcome notification if needed
                 try:
-                    from notifications.models import Notification
                     Notification.send_welcome_notification(user)
                 except Exception:
                     pass
@@ -166,7 +181,6 @@ class UserViewSet(viewsets.ModelViewSet):
             # Invalidate all user's refresh tokens if user is deactivating self
             if user == request.user:
                 try:
-                    from security.models import RefreshToken
                     RefreshToken.revoke_all_for_user(user)
                 except Exception:
                     pass
@@ -190,6 +204,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def posts(self, request, pk=None):
         user = self.get_object()
         
+        # Import serializer here to avoid circular dependency
         from posts.serializers import PostSerializer
         
         # Pagination parameters
@@ -206,6 +221,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def comments(self, request, pk=None):
         user = self.get_object()
         
+        # Import serializer here to avoid circular dependency
         from comments.serializers import CommentSerializer
         
         # Pagination parameters
@@ -221,8 +237,6 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def communities(self, request, pk=None):
         user = self.get_object()
-        
-        from communities.serializers import CommunitySerializer
         
         # Pagination parameters
         limit = int(request.query_params.get('limit', 20))
@@ -515,7 +529,6 @@ class PasswordChangeView(generics.GenericAPIView):
             
             # Invalidate all refresh tokens
             try:
-                from security.models import RefreshToken
                 RefreshToken.revoke_all_for_user(user)
             except Exception:
                 pass

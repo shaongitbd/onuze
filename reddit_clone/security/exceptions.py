@@ -1,10 +1,9 @@
-from rest_framework.views import exception_handler
 from rest_framework.exceptions import APIException, AuthenticationFailed, NotAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-
+from security.models import AuditLog
 
 class RateLimitExceeded(APIException):
     """
@@ -69,6 +68,9 @@ def custom_exception_handler(exc, context):
     """
     Custom exception handler for better security exception handling.
     """
+    # Import exception_handler here to avoid circular imports
+    from rest_framework.views import exception_handler
+   
     # Call REST framework's default exception handler first
     response = exception_handler(exc, context)
     
@@ -83,7 +85,6 @@ def custom_exception_handler(exc, context):
             request = context.get('request')
             if request and hasattr(request, 'user'):
                 user = request.user
-                from security.models import AuditLog
                 
                 AuditLog.log(
                     action=f"security_exception_{exc.default_code}",

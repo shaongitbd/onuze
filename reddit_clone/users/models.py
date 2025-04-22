@@ -3,6 +3,7 @@ import pyotp
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
+from django.core.mail import send_mail
 
 
 class UserManager(BaseUserManager):
@@ -88,7 +89,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def email_user(self, subject, message, from_email=None, **kwargs):
         """Send an email to this user."""
-        from django.core.mail import send_mail
         send_mail(subject, message, from_email, [self.email], **kwargs)
     
     def increment_karma(self, amount=1):

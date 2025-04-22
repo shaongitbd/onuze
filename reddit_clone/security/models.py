@@ -163,8 +163,16 @@ class AuditLog(models.Model):
         return f"{username}: {self.action} on {self.entity_type}"
     
     @classmethod
-    def log(cls, action, entity_type, entity_id=None, user=None, ip_address=None, user_agent=None, details=None):
+    def log(cls, action, entity_type, entity_id=None, user=None, ip_address=None, user_agent=None, details=None, status=None):
         """Create an audit log entry."""
+        # If details is None, initialize as empty dict
+        if details is None:
+            details = {}
+        
+        # If status is provided, add it to details
+        if status is not None:
+            details['status'] = status
+            
         log_entry = cls(
             user=user,
             action=action,

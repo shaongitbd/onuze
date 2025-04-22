@@ -20,6 +20,11 @@ class ReportViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
+        # Check if this is a schema generation call
+        if getattr(self, 'swagger_fake_view', False):
+            # Return empty queryset for schema generation
+            return Report.objects.none()
+            
         user = self.request.user
         
         # Admins see all reports
@@ -142,6 +147,11 @@ class CommunityReportListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
+        # Check if this is a schema generation call
+        if getattr(self, 'swagger_fake_view', False):
+            # Return empty queryset for schema generation
+            return Report.objects.none()
+            
         user = self.request.user
         community_id = self.kwargs.get('community_id')
         community = get_object_or_404(Community, id=community_id)
@@ -167,6 +177,11 @@ class BanAppealViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
+        # Check if this is a schema generation call
+        if getattr(self, 'swagger_fake_view', False):
+            # Return empty queryset for schema generation
+            return BanAppeal.objects.none()
+            
         user = self.request.user
         
         # Admins see all site ban appeals and appeals for communities they moderate

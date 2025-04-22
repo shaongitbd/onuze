@@ -6,6 +6,8 @@ djoser>=2.2.0,<3.0.0
 django-environ>=0.11.0,<1.0.0
 python-magic>=0.4.27,<0.5.0
 pyclamd>=0.4.0,<0.5.0
+django-storages>=1.14.2,<2.0.0
+boto3>=1.34.0,<2.0.0
 
 # Authentication & Security
 django-axes>=6.1.0,<7.0.0

@@ -73,6 +73,8 @@ INSTALLED_APPS = [
     'messaging',
     'security',
     'search',
+    'uploads',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -201,8 +203,21 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ),
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
     'EXCEPTION_HANDLER': 'security.exceptions.custom_exception_handler',
+    'VIEW_DESCRIPTION_FUNCTION': 'rest_framework.views.get_view_description',
+    'NON_FIELD_ERRORS_KEY': 'non_field_errors',
+    'FORMAT_SUFFIX_KWARG': 'format',
+    'URL_FIELD_NAME': 'url',
+    'DATE_FORMAT': 'iso-8601',
+    'DATE_INPUT_FORMATS': ['iso-8601'],
+    'DATETIME_FORMAT': 'iso-8601',
+    'DATETIME_INPUT_FORMATS': ['iso-8601'],
+    'TIME_FORMAT': 'iso-8601',
+    'TIME_INPUT_FORMATS': ['iso-8601'],
+    'COERCE_DECIMAL_TO_STRING': True,
+    'UPLOADED_FILES_USE_URL': True,
+    'HTML_SELECT_CUTOFF': 1000,
+    'HTML_SELECT_CUTOFF_TEXT': "More than {count} items..."
 }
 
 # Simple JWT Settings
@@ -345,3 +360,32 @@ DJOSER = {
         'username_reset': 'djoser.email.UsernameResetEmail',
     }
 }
+
+# drf-yasg settings
+YASG_AUTO_SCHEMA_CLASS = 'drf_yasg.inspectors.SwaggerAutoSchema'
+
+# Backblaze B2 Storage Configuration
+DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'  # Fallback to local storage
+
+# Enable Backblaze storage if credentials are configured
+if os.environ.get('USE_BACKBLAZE', 'False').lower() == 'true':
+    DEFAULT_FILE_STORAGE = 'core.storage.BackblazeB2Storage'
+    
+    # Backblaze B2 credentials
+    B2_ACCESS_KEY = os.environ.get('B2_ACCESS_KEY')
+    B2_SECRET_KEY = os.environ.get('B2_SECRET_KEY')
+    B2_BUCKET_NAME = os.environ.get('B2_BUCKET_NAME')
+    B2_REGION = os.environ.get('B2_REGION', 'us-west-004')
+    
+    # AWS S3 compatible settings (used by boto3)
+    AWS_ACCESS_KEY_ID = B2_ACCESS_KEY
+    AWS_SECRET_ACCESS_KEY = B2_SECRET_KEY
+    AWS_STORAGE_BUCKET_NAME = B2_BUCKET_NAME
+    AWS_S3_REGION_NAME = B2_REGION
+    AWS_DEFAULT_ACL = 'public-read'
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_FILE_OVERWRITE = False
+    
+    # Media specific storage
+    MEDIA_URL = f'https://s3.{B2_REGION}.backblazeb2.com/{B2_BUCKET_NAME}/'

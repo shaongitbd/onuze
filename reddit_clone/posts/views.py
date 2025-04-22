@@ -1,14 +1,38 @@
-from django.shortcuts import render
-from rest_framework import viewsets, permissions, status, generics
-from rest_framework.decorators import action
+from django.shortcuts import render, get_object_or_404
+from rest_framework import viewsets, permissions, status, generics, filters
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from django.db.models import Q
+from django.db.models import Q, F, ExpressionWrapper, FloatField, Count, Value, CharField, Exists, OuterRef
+from django.db.models.functions import Log, Greatest
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from datetime import timedelta
+from django.conf import settings
+from rest_framework.exceptions import PermissionDenied
+import os
+import io
+from PIL import Image
 from .models import Post, PostMedia
 from .serializers import PostSerializer, PostMediaSerializer
 from utils.media_validators import validate_image, validate_video, generate_safe_filename
 from communities.models import Community, CommunityMember, CommunityModerator
 from security.models import AuditLog
+import traceback
+import json
+import re
+import logging
+from communities.serializers import CommunitySerializer
+from users.models import UserBlock
+from .models import Vote, PostImage, PostSave, PostReport
+from .serializers import PostCreateSerializer, PostUpdateSerializer, VoteSerializer, PostImageSerializer
+from notifications.models import Notification
+from utils.ranking_algorithms import calculate_hotness, calculate_trending, calculate_controversy
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.http import JsonResponse, HttpResponse
+from django.contrib.auth import get_user_model
+import uuid
+import zipfile
+import csv
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -40,12 +64,6 @@ class PostViewSet(viewsets.ModelViewSet):
         sort = self.request.query_params.get('sort', 'new')
         if sort == 'hot':
             # Hot: Higher scores with recency factor
-            from django.db.models import F, ExpressionWrapper, FloatField
-            from django.db.models.functions import Log, Greatest
-            from datetime import timedelta
-            from django.utils import timezone
-            
-            # Logarithmic score with time decay (similar to Reddit's algorithm)
             queryset = queryset.annotate(
                 hours_passed=ExpressionWrapper(
                     (timezone.now() - F('created_at')) / timedelta(hours=1),
@@ -62,9 +80,6 @@ class PostViewSet(viewsets.ModelViewSet):
             queryset = queryset.order_by('-upvote_count', '-created_at')
         elif sort == 'controversial':
             # Controversial: Posts with similar up/down votes
-            from django.db.models import F, ExpressionWrapper, FloatField
-            from django.db.models.functions import Greatest
-            
             queryset = queryset.annotate(
                 controversy=ExpressionWrapper(
                     (F('upvote_count') + F('downvote_count')) / 
@@ -353,7 +368,6 @@ class PostMediaViewSet(viewsets.ModelViewSet):
             )
         
         # Get the post and check permissions
-        from .models import Post
         try:
             post_id = request.data['post']
             post = Post.objects.get(id=post_id)
@@ -391,10 +405,6 @@ class PostMediaViewSet(viewsets.ModelViewSet):
             safe_filename = generate_safe_filename(media_file.name)
             
             # Save the file to the specified location
-            import os
-            from django.conf import settings
-            
-            # Create upload directory if it doesn't exist
             upload_dir = os.path.join(settings.MEDIA_ROOT, 'posts', str(post.id))
             os.makedirs(upload_dir, exist_ok=True)
             
@@ -410,9 +420,6 @@ class PostMediaViewSet(viewsets.ModelViewSet):
             # Create a thumbnail for images
             thumbnail_url = None
             if media_type == 'image':
-                from PIL import Image
-                import io
-                
                 # Open the image
                 img = Image.open(file_path)
                 
@@ -465,7 +472,6 @@ class PostMediaViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         # Check permissions
         if instance.post.user != self.request.user:
-            from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You don't have permission to delete this media.")
         
         # Log media deletion
@@ -484,7 +490,6 @@ class PostMediaViewSet(viewsets.ModelViewSet):
         )
         
         # Delete the actual file
-        import os
         if instance.media_url:
             # Extract the file path from the URL
             file_path = os.path.join(

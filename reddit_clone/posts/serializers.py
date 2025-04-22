@@ -1,8 +1,11 @@
 from rest_framework import serializers
-from users.serializers import UserBriefSerializer
+from django.utils.timesince import timesince
+from django.contrib.auth import get_user_model
+from users.serializers import UserSerializer, UserBriefSerializer
+from communities.models import Community, Flair
 from communities.serializers import CommunitySerializer, FlairSerializer
 from utils.sanitizers import sanitize_html
-from .models import Post, PostMedia
+from .models import Post, PostMedia, Vote, PostImage, PostReport, PostSave
 
 
 class PostMediaSerializer(serializers.ModelSerializer):
@@ -57,8 +60,6 @@ class PostSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         
         # Create post
-        from communities.models import Community, Flair
-        
         try:
             community = Community.objects.get(id=community_id)
             
@@ -82,7 +83,6 @@ class PostSerializer(serializers.ModelSerializer):
         flair_id = validated_data.pop('flair_id', None)
         
         if flair_id:
-            from communities.models import Flair
             try:
                 flair = Flair.objects.get(id=flair_id, community=instance.community)
                 instance.flair = flair
@@ -101,4 +101,58 @@ class PostSerializer(serializers.ModelSerializer):
         instance.is_spoiler = validated_data.get('is_spoiler', instance.is_spoiler)
         
         instance.save()
-        return instance 
+        return instance
+
+
+class PostCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating posts.
+    """
+    community_id = serializers.UUIDField(write_only=True)
+    flair_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
+    
+    class Meta:
+        model = Post
+        fields = [
+            'community_id', 'title', 'content', 'flair_id',
+            'is_nsfw', 'is_spoiler'
+        ]
+    
+    def validate_content(self, value):
+        return sanitize_html(value)
+
+
+class PostUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating posts.
+    """
+    flair_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
+    
+    class Meta:
+        model = Post
+        fields = ['title', 'content', 'flair_id', 'is_nsfw', 'is_spoiler']
+    
+    def validate_content(self, value):
+        return sanitize_html(value)
+
+
+class VoteSerializer(serializers.ModelSerializer):
+    """
+    Serializer for post votes.
+    """
+    user = UserBriefSerializer(read_only=True)
+    
+    class Meta:
+        model = Vote
+        fields = ['id', 'post', 'user', 'vote_type', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
+
+
+class PostImageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for post images.
+    """
+    class Meta:
+        model = PostImage
+        fields = ['id', 'post', 'image_url', 'order', 'created_at']
+        read_only_fields = ['id', 'created_at'] 

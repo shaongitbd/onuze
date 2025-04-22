@@ -7,6 +7,7 @@ from rest_framework import status
 from posts.models import Post, Subreddit
 from comments.models import Comment
 from unittest.mock import patch, MagicMock
+import time
 
 User = get_user_model()
 
@@ -277,9 +278,9 @@ class SearchTests(APITestCase):
                            f"Post {post['id']} should have highlighted search term")
 
     def test_search_performance(self):
-        """Test search performance with a large number of results"""
-        # Create a larger dataset for performance testing
-        for i in range(50):
+        """Test search performance under load"""
+        # Create a large number of posts to search through
+        for i in range(100): # Reduced for faster testing
             post = Post.objects.create(
                 title=f'Performance test post {i}',
                 content=f'Testing search performance with post {i}',
@@ -294,7 +295,6 @@ class SearchTests(APITestCase):
             )
         
         # Search a term that will match all the new posts
-        import time
         start_time = time.time()
         
         response = self.client.get(f"{self.search_url}?q=performance&type=post")

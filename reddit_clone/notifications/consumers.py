@@ -7,6 +7,10 @@ from django.utils import timezone
 from channels.middleware import BaseMiddleware
 from channels.auth import AuthMiddlewareStack
 import logging
+from django.conf import settings
+from .models import Notification
+from .serializers import NotificationSerializer
+from security.models import AuditLog
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +113,6 @@ class CSRFProtectionMiddleware(BaseMiddleware):
     """
     def __init__(self, inner):
         super().__init__(inner)
-        from django.conf import settings
         self.allowed_origins = getattr(settings, 'CSRF_TRUSTED_ORIGINS', [])
         if not self.allowed_origins and getattr(settings, 'CORS_ALLOWED_ORIGINS', None):
             self.allowed_origins = settings.CORS_ALLOWED_ORIGINS
@@ -331,12 +334,8 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         """
         Get all unread notifications for the user.
         """
-        from .models import Notification
-        from .serializers import NotificationSerializer
-        
-        user = self.scope["user"]
         notifications = Notification.objects.filter(
-            user=user,
+            user=self.scope["user"],
             is_read=False
         ).order_by('-created_at')[:20]  # Limit to latest 20
         
@@ -352,9 +351,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         """
         Mark a notification as read.
         """
-        from .models import Notification
-        from security.models import AuditLog
-        
         user = self.scope["user"]
         try:
             notification = Notification.objects.get(id=notification_id)
@@ -394,9 +390,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         """
         Mark all notifications for the user as read.
         """
-        from .models import Notification
-        from security.models import AuditLog
-        
         user = self.scope["user"]
         count = Notification.objects.filter(user=user, is_read=False).count()
         

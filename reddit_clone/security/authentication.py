@@ -3,8 +3,10 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework.authentication import BaseAuthentication
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from .models import RefreshToken
+from users.models import UserSession
+from rest_framework.exceptions import AuthenticationFailed
 from .exceptions import AccountLocked, AccountBanned, VerificationRequired, TwoFactorRequired
-from .models import RefreshToken, UserSession
 
 User = get_user_model()
 
@@ -80,44 +82,85 @@ class TwoFactorAuthentication(BaseAuthentication):
     def authenticate(self, request):
         """
         Authenticate the request and return a tuple of (user, auth).
+        This method should only proceed if a user has already been authenticated
+        by a preceding authenticator (e.g., JWT or Session).
         """
-        # This is meant to be used after JWT authentication
-        if not hasattr(request, 'user') or not request.user.is_authenticated:
+        # Check if a user was authenticated by a *previous* authenticator.
+        # Avoid accessing request.user directly here to prevent recursion.
+        # Check the internal attributes set by DRF.
+        user = getattr(request._request, '_user', None) # Access underlying HttpRequest
+        if not user or not user.is_authenticated:
+            # No user authenticated yet, or previous auth failed.
+            # Let DRF continue with other authenticators or handle anonymous user.
             return None
         
-        user = request.user
+        # --- At this point, user is authenticated by a primary method ---
         
-        # If 2FA is not enabled, authentication is complete
-        if not user.two_factor_enabled:
-            return (user, None)
+        # If 2FA is not enabled for this user, authentication is complete.
+        # The user object is already on the request, DRF will handle it.
+        # Return None because *this* authenticator isn't adding anything new.
+        if not getattr(user, 'two_factor_enabled', False):
+            return None # Let DRF use the already authenticated user
         
-        # Check if the request has a valid 2FA token
-        token = request.META.get('HTTP_X_2FA_TOKEN')
+        # Check if the user has already passed 2FA in this session/request
+        # (e.g., via a flag set in the session or a temporary token)
+        # Note: Requires SessionMiddleware to be active.
+        if request.session.get('2fa_authenticated', False):
+             # Already passed 2FA check for this session
+             return None # Let DRF use the already authenticated user
+             
+        # --- 2FA is enabled, but not yet passed in this session ---
+        
+        # Check if a 2FA token is provided
+        token = request.headers.get('X-2FA-Token') # Recommended header
         if not token:
-            # Look for token in request data
-            token = request.data.get('two_factor_code')
-            if not token:
-                # For GET requests, check query params
-                token = request.query_params.get('two_factor_code')
+            # Fallback: Check common POST/query parameter names
+            token = request.data.get('two_factor_code') or \
+                    request.query_params.get('two_factor_code') or \
+                    request.data.get('two_factor_token') # Common alternative
         
-        # If no token is provided, fail the authentication
+        # If no token is provided where one is required, raise the specific exception.
         if not token:
-            raise TwoFactorRequired()
+            raise TwoFactorRequired("Two-factor authentication code required (X-2FA-Token header or form field).")
         
         # Verify the 2FA token
-        if not user.verify_2fa(token):
-            # Record failed attempt
-            user.record_failed_login()
-            raise TwoFactorRequired(detail="Invalid two-factor authentication code.")
-        
-        # Reset failed login attempts on successful 2FA
-        user.reset_failed_logins()
-        
-        # Create or update user session
-        self._create_or_update_session(request, user)
-        
-        return (user, None)
-    
+        try:
+            if user.verify_totp_token(token): # Assuming verify_totp_token exists on user model
+                # Token is valid. Mark 2FA as passed for this session.
+                request.session['2fa_authenticated'] = True
+                
+                # Record successful login/2FA step if necessary (e.g., reset failed attempts)
+                if hasattr(user, 'reset_failed_logins'):
+                    user.reset_failed_logins()
+                
+                # Create or update user session for tracking active sessions
+                self._create_or_update_session(request, user)
+                
+                # Return None, as the user object is already set on the request
+                # by the preceding authenticator. DRF will use request.user.
+                return None
+            else:
+                # Token is invalid
+                if hasattr(user, 'record_failed_login'):
+                    user.record_failed_login()
+                raise AuthenticationFailed("Invalid two-factor authentication code.")
+        except AttributeError as e:
+             # Handle cases where user model might not have expected methods/attributes
+             raise AuthenticationFailed(f"User model configuration error for 2FA: {e}")
+        except Exception as e:
+            # Catch other potential errors during token verification
+            raise AuthenticationFailed(f"Error verifying two-factor token: {e}")
+
+    def authenticate_header(self, request):
+        """
+        Return a string for the WWW-Authenticate header.
+        Indicates that 2FA is required.
+        """
+        # This is usually triggered on 401 Unauthorized.
+        # We rely on the TwoFactorRequired exception being caught by the handler
+        # to signal the need for 2FA, but this can provide a hint.
+        return 'Bearer realm="api", error="2fa_required", error_description="Two-factor authentication required."'
+
     def _create_or_update_session(self, request, user):
         """
         Create or update a user session record.

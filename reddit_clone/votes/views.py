@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, generics
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import Vote
@@ -433,6 +433,150 @@ class VoteViewSet(viewsets.ModelViewSet):
             )
             
             return Response({'detail': 'Comment downvoted.'})
+    
+    def get_client_ip(self, request):
+        """Get client IP address from request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class PostVoteView(generics.GenericAPIView):
+    """
+    API endpoint for voting on posts.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = VoteSerializer
+    
+    def post(self, request, post_id):
+        post = get_object_or_404(Post, id=post_id)
+        vote_type = request.data.get('vote_type')
+        
+        if vote_type not in [Vote.UPVOTE, Vote.DOWNVOTE]:
+            return Response({
+                'detail': 'Invalid vote type. Must be either 1 (upvote) or -1 (downvote).'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create or update the vote
+        vote = Vote.create_or_update(
+            user=request.user,
+            content_type=Vote.POST,
+            content_id=post_id,
+            vote_type=vote_type
+        )
+        
+        # Log vote action
+        vote_label = 'upvote' if vote_type == Vote.UPVOTE else 'downvote'
+        action_type = 'create' if vote else 'remove'
+        
+        AuditLog.log(
+            action=f'post_{vote_label}_{action_type}',
+            entity_type='post',
+            entity_id=post_id,
+            user=request.user,
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            status='success',
+            details={
+                'post_title': post.title,
+                'vote_type': vote_type
+            }
+        )
+        
+        # If vote is None, it means it was toggled off
+        if vote is None:
+            return Response({
+                'detail': f'Your {vote_label} has been removed.',
+                'vote_count': post.vote_count,
+                'upvote_count': post.upvote_count,
+                'downvote_count': post.downvote_count
+            })
+        
+        # Otherwise, vote was created or updated
+        serializer = self.get_serializer(vote)
+        
+        return Response({
+            'detail': f'Post has been {vote_label}d.',
+            'vote': serializer.data,
+            'vote_count': post.vote_count,
+            'upvote_count': post.upvote_count,
+            'downvote_count': post.downvote_count
+        })
+    
+    def get_client_ip(self, request):
+        """Get client IP address from request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class CommentVoteView(generics.GenericAPIView):
+    """
+    API endpoint for voting on comments.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = VoteSerializer
+    
+    def post(self, request, comment_id):
+        comment = get_object_or_404(Comment, id=comment_id)
+        vote_type = request.data.get('vote_type')
+        
+        if vote_type not in [Vote.UPVOTE, Vote.DOWNVOTE]:
+            return Response({
+                'detail': 'Invalid vote type. Must be either 1 (upvote) or -1 (downvote).'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create or update the vote
+        vote = Vote.create_or_update(
+            user=request.user,
+            content_type=Vote.COMMENT,
+            content_id=comment_id,
+            vote_type=vote_type
+        )
+        
+        # Log vote action
+        vote_label = 'upvote' if vote_type == Vote.UPVOTE else 'downvote'
+        action_type = 'create' if vote else 'remove'
+        
+        AuditLog.log(
+            action=f'comment_{vote_label}_{action_type}',
+            entity_type='comment',
+            entity_id=comment_id,
+            user=request.user,
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            status='success',
+            details={
+                'comment_preview': comment.content[:50] + '...' if len(comment.content) > 50 else comment.content,
+                'vote_type': vote_type
+            }
+        )
+        
+        # If vote is None, it means it was toggled off
+        if vote is None:
+            return Response({
+                'detail': f'Your {vote_label} has been removed.',
+                'vote_count': comment.vote_count,
+                'upvote_count': comment.upvote_count,
+                'downvote_count': comment.downvote_count
+            })
+        
+        # Otherwise, vote was created or updated
+        serializer = self.get_serializer(vote)
+        
+        return Response({
+            'detail': f'Comment has been {vote_label}d.',
+            'vote': serializer.data,
+            'vote_count': comment.vote_count,
+            'upvote_count': comment.upvote_count,
+            'downvote_count': comment.downvote_count
+        })
     
     def get_client_ip(self, request):
         """Get client IP address from request."""

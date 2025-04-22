@@ -17,6 +17,7 @@ class Community(models.Model):
     banner_image = models.CharField(max_length=255, null=True, blank=True)
     icon_image = models.CharField(max_length=255, null=True, blank=True)
     is_private = models.BooleanField(default=False)
+    is_restricted = models.BooleanField(default=False)  # When True, only approved users can post
     member_count = models.IntegerField(default=0)
     is_nsfw = models.BooleanField(default=False)
     
@@ -49,6 +50,7 @@ class CommunityMember(models.Model):
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='members')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='communities')
     joined_at = models.DateTimeField(default=timezone.now)
+    is_approved = models.BooleanField(default=True)  # For restricted communities, members need approval
     is_banned = models.BooleanField(default=False)
     ban_reason = models.TextField(null=True, blank=True)
     banned_until = models.DateTimeField(null=True, blank=True)
@@ -102,6 +104,7 @@ class CommunityModerator(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='moderated_communities')
     appointed_at = models.DateTimeField(default=timezone.now)
     appointed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='appointed_moderators')
+    is_owner = models.BooleanField(default=False)  # Community owner (only one per community)
     permissions = models.JSONField(default=dict)
     
     class Meta:
@@ -166,3 +169,43 @@ class Flair(models.Model):
     
     def __str__(self):
         return f"{self.community.name} - {self.name}"
+
+
+class CommunitySetting(models.Model):
+    """
+    Settings for a community.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='settings')
+    key = models.CharField(max_length=100)
+    value = models.TextField()
+    value_type = models.CharField(max_length=50, default='string')  # string, boolean, integer, json
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'community_setting'
+        verbose_name = 'Community Setting'
+        verbose_name_plural = 'Community Settings'
+        unique_together = ('community', 'key')
+    
+    def __str__(self):
+        return f"{self.community.name} - {self.key}"
+    
+    def get_typed_value(self):
+        """Return the value in its correct type."""
+        if self.value_type == 'boolean':
+            return self.value.lower() in ('true', 'yes', '1', 't', 'y')
+        elif self.value_type == 'integer':
+            try:
+                return int(self.value)
+            except ValueError:
+                return 0
+        elif self.value_type == 'json':
+            import json
+            try:
+                return json.loads(self.value)
+            except json.JSONDecodeError:
+                return {}
+        else:  # string or default
+            return self.value

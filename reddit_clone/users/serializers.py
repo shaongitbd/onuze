@@ -1,6 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.conf import settings
+import requests
+import logging
+from captcha.fields import CaptchaField
 from .models import Role, UserBlock
 
 User = get_user_model()
@@ -62,8 +66,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         """
         Validate the CAPTCHA token with the server.
         """
-        from django.conf import settings
-        import requests
+        # from django.conf import settings
+        # import requests
         
         # Check if CAPTCHA validation is enabled
         if not getattr(settings, 'CAPTCHA_ENABLED', True):
@@ -71,7 +75,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             
         # For Django Simple Captcha
         if getattr(settings, 'SIMPLE_CAPTCHA_ENABLED', False):
-            from captcha.fields import CaptchaField
+            # from captcha.fields import CaptchaField
             try:
                 captcha_field = CaptchaField()
                 captcha_field.clean(value)
@@ -84,7 +88,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             recaptcha_secret = getattr(settings, 'RECAPTCHA_SECRET_KEY', '')
             if not recaptcha_secret:
                 # Log warning but allow registration without verification if not configured
-                import logging
+                # import logging
                 logger = logging.getLogger(__name__)
                 logger.warning("reCAPTCHA is enabled but secret key is not configured")
                 return True
@@ -159,17 +163,25 @@ class UserBlockSerializer(serializers.ModelSerializer):
     """
     Serializer for UserBlock model.
     """
+    # Make user read-only in the Meta fields but set the default here
+    user = serializers.PrimaryKeyRelatedField(
+        read_only=True, 
+        default=serializers.CurrentUserDefault()
+    )
     blocked_user = UserBriefSerializer(read_only=True)
     blocked_user_id = serializers.UUIDField(write_only=True)
     
     class Meta:
         model = UserBlock
+        # Ensure 'user' is listed here but it will be handled by CurrentUserDefault
         fields = ['id', 'user', 'blocked_user', 'blocked_user_id', 'created_at', 'reason']
-        read_only_fields = ['id', 'user', 'created_at']
+        # 'user' is effectively read-only from the perspective of input data,
+        # but will be populated by CurrentUserDefault on creation.
+        read_only_fields = ['id', 'created_at', 'blocked_user'] # Removed 'user' from here
     
+    # Remove the explicit setting of user in create method
     def create(self, validated_data):
-        # Set the current user as the blocking user
-        validated_data['user'] = self.context['request'].user
+        # user is now automatically set by CurrentUserDefault
         
         # Get the blocked user from the provided ID
         blocked_user_id = validated_data.pop('blocked_user_id')
@@ -180,7 +192,13 @@ class UserBlockSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"blocked_user_id": "User not found."})
         
         # Check if trying to block self
-        if validated_data['user'] == blocked_user:
+        # Need to get the user from the validated_data or default context now
+        requesting_user = self.context['request'].user
+        if requesting_user == blocked_user:
             raise serializers.ValidationError({"blocked_user_id": "You cannot block yourself."})
+        
+        # Ensure the user field is correctly populated before calling super()
+        # CurrentUserDefault should handle this, but explicit check can be added if needed
+        # validated_data['user'] = requesting_user # Usually not needed if CurrentUserDefault works
         
         return super().create(validated_data) 

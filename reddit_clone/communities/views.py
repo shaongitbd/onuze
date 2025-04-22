@@ -2,26 +2,28 @@ from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Community, CommunityMember, CommunityModerator, CommunityRule, CommunitySetting
+from .models import Community, CommunityMember, CommunityModerator, CommunityRule, CommunitySetting, Flair
 from .serializers import (
     CommunitySerializer, CommunityMemberSerializer, CommunityModeratorSerializer,
-    CommunityRuleSerializer, CommunitySettingSerializer
+    CommunityRuleSerializer, CommunitySettingSerializer, FlairSerializer
 )
 from .permissions import IsCommunityOwnerOrReadOnly, IsCommunityModeratorOrReadOnly
 from security.models import AuditLog
 
 
 class CommunityViewSet(viewsets.ModelViewSet):
+    print("YO")
     """
     API endpoint for communities.
     """
     queryset = Community.objects.all()
+    print(queryset)
     serializer_class = CommunitySerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCommunityOwnerOrReadOnly]
     
     def perform_create(self, serializer):
         try:
-            community = serializer.save(owner=self.request.user)
+            community = serializer.save(created_by=self.request.user)
             
             # Automatically add creator as a member and moderator
             CommunityMember.objects.create(
@@ -234,11 +236,11 @@ class CommunityViewSet(viewsets.ModelViewSet):
         serializer = CommunityRuleSerializer(rules, many=True)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['get'])
-    def settings(self, request, pk=None):
+    @action(detail=True, methods=['get'], url_path='settings', url_name='settings')
+    def list_settings(self, request, pk=None):
         community = self.get_object()
-        settings = CommunitySetting.objects.filter(community=community)
-        serializer = CommunitySettingSerializer(settings, many=True)
+        settings_qs = CommunitySetting.objects.filter(community=community)
+        serializer = CommunitySettingSerializer(settings_qs, many=True)
         return Response(serializer.data)
     
     def get_client_ip(self, request):
@@ -503,7 +505,7 @@ class CommunityModeratorViewSet(viewsets.ModelViewSet):
             new_owner.save()
             
             # Update the community owner
-            community.owner = new_owner.user
+            community.created_by = new_owner.user
             community.save()
             
             # Log ownership transfer
@@ -680,6 +682,145 @@ class CommunitySettingViewSet(viewsets.ModelViewSet):
         )
         
         instance.delete()
+    
+    def get_client_ip(self, request):
+        """Get client IP address from request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class FlairViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for community flairs.
+    """
+    serializer_class = FlairSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCommunityModeratorOrReadOnly]
+    
+    def get_queryset(self):
+        return Flair.objects.filter(community__id=self.kwargs.get('community_id', None))
+    
+    def perform_create(self, serializer):
+        try:
+            community_id = self.kwargs.get('community_id')
+            community = get_object_or_404(Community, id=community_id)
+            flair = serializer.save(
+                community=community,
+                created_by=self.request.user
+            )
+            
+            # Log flair creation
+            AuditLog.log(
+                action='flair_create',
+                entity_type='flair',
+                entity_id=flair.id,
+                user=self.request.user,
+                ip_address=self.get_client_ip(self.request),
+                user_agent=self.request.META.get('HTTP_USER_AGENT', ''),
+                status='success',
+                details={
+                    'community_id': str(community.id),
+                    'community_name': community.name,
+                    'flair_name': flair.name
+                }
+            )
+        except Exception as e:
+            # Log failed flair creation
+            AuditLog.log(
+                action='flair_create_failed',
+                entity_type='flair',
+                user=self.request.user,
+                ip_address=self.get_client_ip(self.request),
+                user_agent=self.request.META.get('HTTP_USER_AGENT', ''),
+                status='failed',
+                details={
+                    'community_id': self.kwargs.get('community_id'),
+                    'flair_name': serializer.validated_data.get('name', 'unknown'),
+                    'error': str(e)
+                }
+            )
+            raise
+    
+    def perform_update(self, serializer):
+        try:
+            flair = serializer.save()
+            
+            # Log flair update
+            AuditLog.log(
+                action='flair_update',
+                entity_type='flair',
+                entity_id=flair.id,
+                user=self.request.user,
+                ip_address=self.get_client_ip(self.request),
+                user_agent=self.request.META.get('HTTP_USER_AGENT', ''),
+                status='success',
+                details={
+                    'community_id': str(flair.community.id),
+                    'community_name': flair.community.name,
+                    'flair_name': flair.name,
+                    'updated_fields': list(serializer.validated_data.keys())
+                }
+            )
+        except Exception as e:
+            # Get the flair ID from the URL
+            flair_id = self.kwargs.get('pk')
+            
+            # Log failed flair update
+            AuditLog.log(
+                action='flair_update_failed',
+                entity_type='flair',
+                entity_id=flair_id,
+                user=self.request.user,
+                ip_address=self.get_client_ip(self.request),
+                user_agent=self.request.META.get('HTTP_USER_AGENT', ''),
+                status='failed',
+                details={
+                    'updated_fields': list(serializer.validated_data.keys()),
+                    'error': str(e)
+                }
+            )
+            raise
+    
+    def perform_destroy(self, instance):
+        try:
+            # Log flair deletion
+            AuditLog.log(
+                action='flair_delete',
+                entity_type='flair',
+                entity_id=instance.id,
+                user=self.request.user,
+                ip_address=self.get_client_ip(self.request),
+                user_agent=self.request.META.get('HTTP_USER_AGENT', ''),
+                status='success',
+                details={
+                    'community_id': str(instance.community.id),
+                    'community_name': instance.community.name,
+                    'flair_name': instance.name
+                }
+            )
+            
+            instance.delete()
+        except Exception as e:
+            # Log failed flair deletion
+            AuditLog.log(
+                action='flair_delete_failed',
+                entity_type='flair',
+                entity_id=instance.id,
+                user=self.request.user,
+                ip_address=self.get_client_ip(self.request),
+                user_agent=self.request.META.get('HTTP_USER_AGENT', ''),
+                status='failed',
+                details={
+                    'community_id': str(instance.community.id),
+                    'community_name': instance.community.name,
+                    'flair_name': instance.name,
+                    'error': str(e)
+                }
+            )
+            raise
     
     def get_client_ip(self, request):
         """Get client IP address from request."""

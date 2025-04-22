@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from users.serializers import UserBriefSerializer
 from communities.serializers import CommunitySerializer
+from posts.models import Post
+from comments.models import Comment
+from communities.models import CommunityMember, Community
 from .models import Report, BanAppeal
 
 
@@ -34,13 +37,11 @@ class ReportSerializer(serializers.ModelSerializer):
         community = None
         
         if content_type == Report.POST:
-            from posts.models import Post
             try:
                 community = Post.objects.get(id=content_id).community
             except Post.DoesNotExist:
                 raise serializers.ValidationError("Reported post not found.")
         elif content_type == Report.COMMENT:
-            from comments.models import Comment
             try:
                 community = Comment.objects.get(id=content_id).post.community
             except Comment.DoesNotExist:
@@ -98,7 +99,6 @@ class BanAppealSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("User is not currently site-banned.")
         elif appeal_type == BanAppeal.COMMUNITY_BAN:
             if community_id:
-                from communities.models import CommunityMember, Community
                 try:
                     community = Community.objects.get(id=community_id)
                     member = CommunityMember.objects.get(user=user, community=community)

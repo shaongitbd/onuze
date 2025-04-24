@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify
 from users.models import User
 
 
@@ -10,6 +11,7 @@ class Community(models.Model):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
+    path = models.SlugField(max_length=120, unique=True, blank=True, null=True)
     description = models.TextField()
     created_at = models.DateTimeField(default=timezone.now)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_communities')
@@ -26,9 +28,33 @@ class Community(models.Model):
         verbose_name = 'Community'
         verbose_name_plural = 'Communities'
         ordering = ['-member_count']
+        indexes = [
+            models.Index(fields=['path']),
+        ]
     
     def __str__(self):
         return self.name
+    
+    def save(self, *args, **kwargs):
+        # Generate a slug if one doesn't exist
+        if not self.path:
+            # Base the slug on the name
+            base_slug = slugify(self.name)
+            
+            # Check if the slug already exists
+            slug = base_slug
+            counter = 1
+            while Community.objects.filter(path=slug).exists():
+                # If slug exists, append a counter
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            
+            self.path = slug
+        super().save(*args, **kwargs)
+    
+    def get_absolute_url(self):
+        """Return the URL for this community."""
+        return f"/communities/{self.path}/"
     
     def increment_member_count(self):
         """Increment the member count."""

@@ -2,8 +2,9 @@ from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, permissions, status, generics, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from django.db.models import Q, F, ExpressionWrapper, FloatField, Count, Value, CharField, Exists, OuterRef
-from django.db.models.functions import Log, Greatest
+from django.db.models import Q, F, ExpressionWrapper, FloatField, Count, Value, CharField, Exists, OuterRef, DurationField, Func
+from django.db.models.functions import Log, Greatest, Now, Abs
+from django.db.models.expressions import RawSQL
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
@@ -33,22 +34,30 @@ from django.contrib.auth import get_user_model
 import uuid
 import zipfile
 import csv
+from core.permissions import IsOwnerOrReadOnly
 
 
 class PostViewSet(viewsets.ModelViewSet):
     """
     API endpoint for posts.
+    Handles listing, creation, retrieval, update, deletion, and custom actions.
+    Uses path for detail lookups.
     """
     serializer_class = PostSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsOwnerOrReadOnly]
+    lookup_field = 'path'
+    lookup_url_kwarg = 'path'
     
     def get_queryset(self):
         queryset = Post.objects.filter(is_deleted=False)
         
-        # Filter by community
+        # Filter by community (allow both ID and path)
         community_id = self.request.query_params.get('community', None)
+        community_path = self.request.query_params.get('community_path', None)
         if community_id:
             queryset = queryset.filter(community__id=community_id)
+        elif community_path:
+            queryset = queryset.filter(community__path=community_path)
         
         # Filter by user
         user_id = self.request.query_params.get('user', None)
@@ -60,18 +69,41 @@ class PostViewSet(viewsets.ModelViewSet):
         if flair_id:
             queryset = queryset.filter(flair__id=flair_id)
         
+        # Time-based filtering
+        time_filter = self.request.query_params.get('time', None)
+        if time_filter:
+            now = timezone.now()
+            if time_filter == 'day':
+                # Posts from the last 24 hours
+                queryset = queryset.filter(created_at__gte=now - timedelta(days=1))
+            elif time_filter == 'week':
+                # Posts from the last 7 days
+                queryset = queryset.filter(created_at__gte=now - timedelta(days=7))
+            elif time_filter == 'month':
+                # Posts from the last 30 days
+                queryset = queryset.filter(created_at__gte=now - timedelta(days=30))
+            elif time_filter == 'year':
+                # Posts from the last 365 days
+                queryset = queryset.filter(created_at__gte=now - timedelta(days=365))
+        
         # Sort
         sort = self.request.query_params.get('sort', 'new')
         if sort == 'hot':
             # Hot: Higher scores with recency factor
             queryset = queryset.annotate(
+                # Calculate hours since post creation using epoch extraction
                 hours_passed=ExpressionWrapper(
-                    (timezone.now() - F('created_at')) / timedelta(hours=1),
+                    Func(
+                        Now() - F('created_at'),
+                        function='EXTRACT',
+                        template="EXTRACT(EPOCH FROM %(expressions)s)",
+                        output_field=FloatField()
+                    ) / Value(3600),
                     output_field=FloatField()
                 ),
                 hot_score=ExpressionWrapper(
-                    Log(Greatest(F('upvote_count') - F('downvote_count'), 1)) / 
-                    (Greatest(F('hours_passed'), 2) ** 1.5),
+                    Log(10, Greatest(F('upvote_count') - F('downvote_count'), 1)) / 
+                    (Greatest(F('hours_passed'), 2) ** 1.5), # Use the calculated hours_passed
                     output_field=FloatField()
                 )
             ).order_by('-hot_score')
@@ -82,8 +114,11 @@ class PostViewSet(viewsets.ModelViewSet):
             # Controversial: Posts with similar up/down votes
             queryset = queryset.annotate(
                 controversy=ExpressionWrapper(
-                    (F('upvote_count') + F('downvote_count')) / 
-                    (Greatest(abs(F('upvote_count') - F('downvote_count')), 1)),
+                    (F('upvote_count') + F('downvote_count')) /
+                    Greatest(
+                        Abs(F('upvote_count') - F('downvote_count')),
+                        Value(1)
+                    ),
                     output_field=FloatField()
                 )
             ).filter(upvote_count__gt=0, downvote_count__gt=0).order_by('-controversy')

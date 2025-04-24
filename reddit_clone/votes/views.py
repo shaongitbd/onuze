@@ -170,270 +170,6 @@ class VoteViewSet(viewsets.ModelViewSet):
             )
             raise
     
-    @action(detail=False, methods=['post'])
-    def upvote_post(self, request):
-        post_id = request.data.get('post_id')
-        post = get_object_or_404(Post, id=post_id)
-        
-        # Check if a vote already exists
-        existing_vote = Vote.objects.filter(
-            user=request.user,
-            post=post
-        ).first()
-        
-        if existing_vote:
-            if existing_vote.vote_type == 'up':
-                # If already upvoted, remove the vote (toggle off)
-                existing_vote.delete()
-                
-                # Log vote removal
-                AuditLog.log(
-                    action='upvote_post_remove',
-                    entity_type='post',
-                    entity_id=post.id,
-                    user=request.user,
-                    ip_address=self.get_client_ip(request),
-                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    details={'post_title': post.title}
-                )
-                
-                return Response({'detail': 'Upvote removed.'})
-            else:
-                # If previously downvoted, change to upvote
-                existing_vote.vote_type = 'up'
-                existing_vote.save()
-                
-                # Log vote update
-                AuditLog.log(
-                    action='downvote_to_upvote_post',
-                    entity_type='post',
-                    entity_id=post.id,
-                    user=request.user,
-                    ip_address=self.get_client_ip(request),
-                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    details={'post_title': post.title}
-                )
-                
-                return Response({'detail': 'Downvote changed to upvote.'})
-        else:
-            # Create a new upvote
-            vote = Vote.objects.create(
-                user=request.user,
-                post=post,
-                vote_type='up'
-            )
-            
-            # Log new upvote
-            AuditLog.log(
-                action='upvote_post_new',
-                entity_type='post',
-                entity_id=post.id,
-                user=request.user,
-                ip_address=self.get_client_ip(request),
-                user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                details={'post_title': post.title}
-            )
-            
-            return Response({'detail': 'Post upvoted.'})
-    
-    @action(detail=False, methods=['post'])
-    def downvote_post(self, request):
-        post_id = request.data.get('post_id')
-        post = get_object_or_404(Post, id=post_id)
-        
-        # Check if a vote already exists
-        existing_vote = Vote.objects.filter(
-            user=request.user,
-            post=post
-        ).first()
-        
-        if existing_vote:
-            if existing_vote.vote_type == 'down':
-                # If already downvoted, remove the vote (toggle off)
-                existing_vote.delete()
-                
-                # Log vote removal
-                AuditLog.log(
-                    action='downvote_post_remove',
-                    entity_type='post',
-                    entity_id=post.id,
-                    user=request.user,
-                    ip_address=self.get_client_ip(request),
-                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    details={'post_title': post.title}
-                )
-                
-                return Response({'detail': 'Downvote removed.'})
-            else:
-                # If previously upvoted, change to downvote
-                existing_vote.vote_type = 'down'
-                existing_vote.save()
-                
-                # Log vote update
-                AuditLog.log(
-                    action='upvote_to_downvote_post',
-                    entity_type='post',
-                    entity_id=post.id,
-                    user=request.user,
-                    ip_address=self.get_client_ip(request),
-                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    details={'post_title': post.title}
-                )
-                
-                return Response({'detail': 'Upvote changed to downvote.'})
-        else:
-            # Create a new downvote
-            vote = Vote.objects.create(
-                user=request.user,
-                post=post,
-                vote_type='down'
-            )
-            
-            # Log new downvote
-            AuditLog.log(
-                action='downvote_post_new',
-                entity_type='post',
-                entity_id=post.id,
-                user=request.user,
-                ip_address=self.get_client_ip(request),
-                user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                details={'post_title': post.title}
-            )
-            
-            return Response({'detail': 'Post downvoted.'})
-    
-    @action(detail=False, methods=['post'])
-    def upvote_comment(self, request):
-        comment_id = request.data.get('comment_id')
-        comment = get_object_or_404(Comment, id=comment_id)
-        
-        # Check if a vote already exists
-        existing_vote = Vote.objects.filter(
-            user=request.user,
-            comment=comment
-        ).first()
-        
-        if existing_vote:
-            if existing_vote.vote_type == 'up':
-                # If already upvoted, remove the vote (toggle off)
-                existing_vote.delete()
-                
-                # Log vote removal
-                AuditLog.log(
-                    action='upvote_comment_remove',
-                    entity_type='comment',
-                    entity_id=comment.id,
-                    user=request.user,
-                    ip_address=self.get_client_ip(request),
-                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    details={'post_id': str(comment.post.id)}
-                )
-                
-                return Response({'detail': 'Upvote removed.'})
-            else:
-                # If previously downvoted, change to upvote
-                existing_vote.vote_type = 'up'
-                existing_vote.save()
-                
-                # Log vote update
-                AuditLog.log(
-                    action='downvote_to_upvote_comment',
-                    entity_type='comment',
-                    entity_id=comment.id,
-                    user=request.user,
-                    ip_address=self.get_client_ip(request),
-                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    details={'post_id': str(comment.post.id)}
-                )
-                
-                return Response({'detail': 'Downvote changed to upvote.'})
-        else:
-            # Create a new upvote
-            vote = Vote.objects.create(
-                user=request.user,
-                comment=comment,
-                vote_type='up'
-            )
-            
-            # Log new upvote
-            AuditLog.log(
-                action='upvote_comment_new',
-                entity_type='comment',
-                entity_id=comment.id,
-                user=request.user,
-                ip_address=self.get_client_ip(request),
-                user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                details={'post_id': str(comment.post.id)}
-            )
-            
-            return Response({'detail': 'Comment upvoted.'})
-    
-    @action(detail=False, methods=['post'])
-    def downvote_comment(self, request):
-        comment_id = request.data.get('comment_id')
-        comment = get_object_or_404(Comment, id=comment_id)
-        
-        # Check if a vote already exists
-        existing_vote = Vote.objects.filter(
-            user=request.user,
-            comment=comment
-        ).first()
-        
-        if existing_vote:
-            if existing_vote.vote_type == 'down':
-                # If already downvoted, remove the vote (toggle off)
-                existing_vote.delete()
-                
-                # Log vote removal
-                AuditLog.log(
-                    action='downvote_comment_remove',
-                    entity_type='comment',
-                    entity_id=comment.id,
-                    user=request.user,
-                    ip_address=self.get_client_ip(request),
-                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    details={'post_id': str(comment.post.id)}
-                )
-                
-                return Response({'detail': 'Downvote removed.'})
-            else:
-                # If previously upvoted, change to downvote
-                existing_vote.vote_type = 'down'
-                existing_vote.save()
-                
-                # Log vote update
-                AuditLog.log(
-                    action='upvote_to_downvote_comment',
-                    entity_type='comment',
-                    entity_id=comment.id,
-                    user=request.user,
-                    ip_address=self.get_client_ip(request),
-                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    details={'post_id': str(comment.post.id)}
-                )
-                
-                return Response({'detail': 'Upvote changed to downvote.'})
-        else:
-            # Create a new downvote
-            vote = Vote.objects.create(
-                user=request.user,
-                comment=comment,
-                vote_type='down'
-            )
-            
-            # Log new downvote
-            AuditLog.log(
-                action='downvote_comment_new',
-                entity_type='comment',
-                entity_id=comment.id,
-                user=request.user,
-                ip_address=self.get_client_ip(request),
-                user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                details={'post_id': str(comment.post.id)}
-            )
-            
-            return Response({'detail': 'Comment downvoted.'})
-    
     def get_client_ip(self, request):
         """Get client IP address from request."""
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -576,6 +312,78 @@ class CommentVoteView(generics.GenericAPIView):
             'vote_count': comment.vote_count,
             'upvote_count': comment.upvote_count,
             'downvote_count': comment.downvote_count
+        })
+    
+    def get_client_ip(self, request):
+        """Get client IP address from request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class PostVoteByPathView(generics.GenericAPIView):
+    """
+    API endpoint for voting on posts using path-based lookup.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = VoteSerializer
+    
+    def post(self, request, post_path):
+        post = get_object_or_404(Post, path=post_path)
+        vote_type = request.data.get('vote_type')
+        
+        if vote_type not in [Vote.UPVOTE, Vote.DOWNVOTE]:
+            return Response({
+                'detail': 'Invalid vote type. Must be either 1 (upvote) or -1 (downvote).'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create or update the vote
+        vote = Vote.create_or_update(
+            user=request.user,
+            content_type=Vote.POST,
+            content_id=post.id,
+            vote_type=vote_type
+        )
+        
+        # Log vote action
+        vote_label = 'upvote' if vote_type == Vote.UPVOTE else 'downvote'
+        action_type = 'create' if vote else 'remove'
+        
+        AuditLog.log(
+            action=f'post_{vote_label}_{action_type}',
+            entity_type='post',
+            entity_id=post.id,
+            user=request.user,
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            status='success',
+            details={
+                'post_title': post.title,
+                'vote_type': vote_type
+            }
+        )
+        
+        # If vote is None, it means it was toggled off
+        if vote is None:
+            return Response({
+                'detail': f'Your {vote_label} has been removed.',
+                'vote_count': post.vote_count,
+                'upvote_count': post.upvote_count,
+                'downvote_count': post.downvote_count
+            })
+        
+        # Otherwise, vote was created or updated
+        serializer = self.get_serializer(vote)
+        
+        return Response({
+            'detail': f'Post has been {vote_label}d.',
+            'vote': serializer.data,
+            'vote_count': post.vote_count,
+            'upvote_count': post.upvote_count,
+            'downvote_count': post.downvote_count
         })
     
     def get_client_ip(self, request):

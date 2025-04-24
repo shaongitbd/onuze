@@ -50,7 +50,7 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # Default permission is IsAuthenticated, overridden below
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -58,13 +58,25 @@ class UserViewSet(viewsets.ModelViewSet):
         elif self.action in ['update', 'partial_update']:
             return UserUpdateSerializer
         elif self.action == 'list':
+             # Use brief serializer for lists
             return UserBriefSerializer
+        # For retrieve, use the default UserSerializer
         return self.serializer_class
     
     def get_permissions(self):
         if self.action == 'create':
+            # Anyone can create a user
             return [permissions.AllowAny()]
-        return super().get_permissions()
+        elif self.action in ['retrieve', 'list']:
+            # Allow public read for individual profiles, but keep list protected
+            # For retrieve (detail view), allow public read
+            # For list view, require authentication
+            if self.action == 'retrieve':
+                 return [permissions.IsAuthenticatedOrReadOnly()]
+            else: # list action
+                 return [permissions.IsAuthenticated()]
+        # Default to IsAuthenticated for other actions (update, destroy, custom actions)
+        return [permissions.IsAuthenticated()]
     
     def perform_create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

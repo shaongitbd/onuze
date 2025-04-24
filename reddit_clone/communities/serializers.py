@@ -13,11 +13,11 @@ class CommunitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Community
         fields = [
-            'id', 'name', 'description', 'created_at', 'created_by',
+            'id', 'name', 'path', 'description', 'created_at', 'created_by',
             'sidebar_content', 'banner_image', 'icon_image',
             'is_private', 'member_count', 'is_nsfw'
         ]
-        read_only_fields = ['id', 'created_at', 'created_by', 'member_count']
+        read_only_fields = ['id', 'path', 'created_at', 'created_by', 'member_count']
 
 
 class CommunityMemberSerializer(serializers.ModelSerializer):

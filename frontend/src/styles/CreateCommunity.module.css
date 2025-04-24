@@ -1,0 +1,104 @@
+.container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.container h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+}
+
+.formGroup label {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #555;
+}
+
+.formGroup small {
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    color: #777;
+}
+
+.input,
+.textarea {
+    padding: 0.8rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease-in-out;
+}
+
+.input:focus,
+.textarea:focus {
+    outline: none;
+    border-color: #0079d3;
+    box-shadow: 0 0 0 2px rgba(0, 121, 211, 0.2);
+}
+
+.textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.inputFile {
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.fileName {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.submitButton {
+    padding: 0.8rem 1.5rem;
+    background-color: #0079d3;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+    align-self: center; /* Center the button */
+    margin-top: 1rem;
+}
+
+.submitButton:hover {
+    background-color: #005fa3;
+}
+
+.submitButton:disabled {
+    background-color: #a0ccec;
+    cursor: not-allowed;
+}
+
+.error {
+    color: #ff4500; /* Reddit orange-red */
+    background-color: #ffeae5;
+    padding: 0.8rem;
+    border-radius: 4px;
+    border: 1px solid #ff4500;
+    text-align: center;
+    margin-bottom: 1rem;
+} 

@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify
 from users.models import User
 from communities.models import Community, Flair
 
@@ -13,6 +14,7 @@ class Post(models.Model):
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='posts')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
     title = models.CharField(max_length=300)
+    path = models.SlugField(max_length=350, unique=True, blank=True, null=True)
     content = models.TextField()
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(null=True, blank=True)
@@ -39,10 +41,34 @@ class Post(models.Model):
             models.Index(fields=['-created_at']),
             models.Index(fields=['community', '-created_at']),
             models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['path']),
         ]
     
     def __str__(self):
         return self.title
+    
+    def save(self, *args, **kwargs):
+        # Generate a slug if one doesn't exist
+        if not self.path:
+            # Base the slug on the title
+            base_slug = slugify(self.title)
+            if len(base_slug) > 80:  # Keep slug reasonable length
+                base_slug = base_slug[:80]
+            
+            # Check if the slug already exists
+            slug = base_slug
+            counter = 1
+            while Post.objects.filter(path=slug).exists():
+                # If slug exists, append a counter
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            
+            self.path = slug
+        super().save(*args, **kwargs)
+    
+    def get_absolute_url(self):
+        """Return the URL for this post."""
+        return f"/posts/{self.path}/"
     
     def edit(self, content):
         """Edit the post content."""

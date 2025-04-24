@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Community, CommunityMember, CommunityModerator, CommunityRule, CommunitySetting, Flair
@@ -830,3 +830,40 @@ class FlairViewSet(viewsets.ModelViewSet):
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
+
+
+class CommunityDetailByPathView(generics.RetrieveAPIView):
+    """
+    API endpoint to retrieve a community by its path (slug).
+    """
+    serializer_class = CommunitySerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    lookup_field = 'path'
+    lookup_url_kwarg = 'path'
+    queryset = Community.objects.all()
+
+
+class CommunityMembersByPathView(generics.ListAPIView):
+    """
+    API endpoint to list members of a community by its path.
+    """
+    serializer_class = CommunityMemberSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        path = self.kwargs.get('path')
+        community = get_object_or_404(Community, path=path)
+        return CommunityMember.objects.filter(community=community)
+
+
+class CommunityModeratorsByPathView(generics.ListAPIView):
+    """
+    API endpoint to list moderators of a community by its path.
+    """
+    serializer_class = CommunityModeratorSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        path = self.kwargs.get('path')
+        community = get_object_or_404(Community, path=path)
+        return CommunityModerator.objects.filter(community=community)

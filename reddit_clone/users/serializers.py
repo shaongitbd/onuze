@@ -52,6 +52,20 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'bio', 'avatar', 'captcha'
         ]
     
+    def validate_username(self, value):
+        """
+        Check that the username meets requirements and is unique.
+        """
+        if len(value) < 3:
+            raise serializers.ValidationError("Username must be at least 3 characters long.")
+        
+        # Check if username contains only allowed characters
+        import re
+        if not re.match(r'^[a-zA-Z0-9_-]+$', value):
+            raise serializers.ValidationError("Username can only contain letters, numbers, underscores, and hyphens.")
+            
+        return value
+    
     def validate(self, attrs):
         if attrs['password'] != attrs.pop('password_confirmation'):
             raise serializers.ValidationError({"password": "Password fields didn't match."})

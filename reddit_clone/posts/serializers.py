@@ -33,14 +33,14 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = [
-            'id', 'user', 'community', 'community_id', 'title', 'content', 
+            'id', 'user', 'community', 'community_id', 'title', 'path', 'content', 
             'created_at', 'updated_at', 'is_edited', 'is_deleted', 'is_locked',
             'locked_reason', 'is_pinned', 'flair', 'flair_id', 'upvote_count',
             'downvote_count', 'comment_count', 'view_count', 'is_nsfw', 
             'is_spoiler', 'media', 'score'
         ]
         read_only_fields = [
-            'id', 'user', 'created_at', 'updated_at', 'is_edited', 'is_deleted',
+            'id', 'user', 'path', 'created_at', 'updated_at', 'is_edited', 'is_deleted',
             'is_locked', 'locked_reason', 'is_pinned', 'upvote_count', 
             'downvote_count', 'comment_count', 'view_count', 'media', 'score'
         ]

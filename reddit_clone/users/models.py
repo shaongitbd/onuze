@@ -11,10 +11,10 @@ class UserManager(BaseUserManager):
     Custom manager for the User model.
     """
     def create_user(self, username, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError('Users must have an email address')
         if not username:
             raise ValueError('Users must have a username')
+        if not email:
+            raise ValueError('Users must have an email address')
         
         email = self.normalize_email(email)
         user = self.model(username=username, email=email, **extra_fields)
@@ -69,8 +69,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = UserManager()
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['email']
 
     class Meta:
         db_table = 'user'
@@ -193,7 +193,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             self.generate_2fa_secret()
         
         totp = pyotp.TOTP(self.two_factor_secret)
-        return totp.provisioning_uri(name=self.email, issuer_name=issuer_name)
+        return totp.provisioning_uri(name=self.username, issuer_name=issuer_name)
 
 
 class Role(models.Model):

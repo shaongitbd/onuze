@@ -1,0 +1,200 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import PostCard from '../components/PostCard';
+import Spinner from '../components/Spinner';
+import { useAuth } from '../lib/auth';
+
+export default function HomePage() {
+  const [posts, setPosts] = useState([]);
+  const [communities, setCommunities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
+        
+        // Fetch posts
+        const postsResponse = await fetch(`${API_BASE_URL}/posts/`);
+        
+        if (!postsResponse.ok) {
+          throw new Error('Failed to load posts');
+        }
+        
+        const postsData = await postsResponse.json();
+        setPosts(Array.isArray(postsData) ? postsData : postsData?.results || []);
+        
+        // Fetch popular communities
+        const communitiesResponse = await fetch(`${API_BASE_URL}/communities/popular/`);
+        
+        if (communitiesResponse.ok) {
+          const communitiesData = await communitiesResponse.json();
+          setCommunities(communitiesData.slice(0, 5)); // Show top 5 communities
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load data. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Spinner size="large" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative my-4" role="alert">
+        <span className="block sm:inline">{error}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Main content - Posts */}
+        <div className="lg:w-8/12">
+          <div className="flex items-center mb-6">
+            <svg className="w-6 h-6 text-gray-700 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" />
+            </svg>
+            <h1 className="text-2xl font-bold text-gray-900">Popular Posts</h1>
+          </div>
+          
+          {posts.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+              <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-700 mb-2">No posts yet</h3>
+              <p className="text-gray-500 mb-6 max-w-md mx-auto">Be the first one to share something!</p>
+              {user && (
+                <Link 
+                  href="/submit"
+                  className="inline-flex items-center px-6 py-3 bg-gray-800 text-white font-medium rounded-full hover:bg-gray-900 transition-colors duration-200 shadow-md hover:shadow-lg"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Create the first post
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {posts.map(post => (
+                <div key={post.id} className="mb-4">
+                  <PostCard post={post} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* Sidebar */}
+        <div className="lg:w-4/12">
+          {/* About section */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
+            <div className="px-6 py-4 bg-gray-700 text-white">
+              <h2 className="text-lg font-bold flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                </svg>
+                Welcome to Reddit Clone
+              </h2>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 mb-6">
+                This is a Reddit-style community platform where you can join communities, create posts, and engage in discussions.
+              </p>
+              {!user && (
+                <div className="space-y-3">
+                  <Link 
+                    href="/login"
+                    className="block w-full bg-red-600 hover:bg-red-700 text-white text-center py-2 px-4 rounded-md transition-colors"
+                  >
+                    Log In
+                  </Link>
+                  <Link 
+                    href="/register"
+                    className="block w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-center py-2 px-4 rounded-md transition-colors"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Popular communities */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="px-6 py-4 bg-gray-700 text-white">
+              <h2 className="text-lg font-bold flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                </svg>
+                Popular Communities
+              </h2>
+            </div>
+            
+            <div className="p-6">
+              {communities.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">No communities yet.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {communities.map(community => (
+                    <li key={community.id}>
+                      <Link 
+                        href={`/c/${community.path || community.name}`}
+                        className="flex items-center py-2 px-3 hover:bg-gray-50 rounded-md transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0 border border-gray-200">
+                          <span className="text-gray-600 font-semibold">
+                            {community.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-900">c/{community.name}</span>
+                          <div className="text-xs text-gray-500">
+                            {community.subscribers || 0} members
+                          </div>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+                <Link 
+                  href="/communities"
+                  className="text-red-500 hover:text-red-600 text-sm font-medium flex items-center justify-center"
+                >
+                  <span>View All Communities</span>
+                  <svg className="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

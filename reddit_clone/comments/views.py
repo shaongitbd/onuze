@@ -7,6 +7,8 @@ from .models import Comment
 from .serializers import CommentSerializer
 from communities.models import CommunityModerator
 from security.models import AuditLog
+from datetime import timedelta
+from django.utils import timezone
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -14,7 +16,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     API endpoint for comments.
     """
     serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
     def get_queryset(self):
         queryset = Comment.objects.filter(is_deleted=False)
@@ -39,10 +41,27 @@ class CommentViewSet(viewsets.ModelViewSet):
         if user_id:
             queryset = queryset.filter(user__id=user_id)
         
+        # Time-based filtering
+        time_filter = self.request.query_params.get('time', None)
+        if time_filter:
+            now = timezone.now()
+            if time_filter == 'day':
+                # Comments from the last 24 hours
+                queryset = queryset.filter(created_at__gte=now - timedelta(days=1))
+            elif time_filter == 'week':
+                # Comments from the last 7 days
+                queryset = queryset.filter(created_at__gte=now - timedelta(days=7))
+            elif time_filter == 'month':
+                # Comments from the last 30 days
+                queryset = queryset.filter(created_at__gte=now - timedelta(days=30))
+            elif time_filter == 'year':
+                # Comments from the last 365 days
+                queryset = queryset.filter(created_at__gte=now - timedelta(days=365))
+        
         # Sort
         sort = self.request.query_params.get('sort', 'new')
-        if sort == 'best':
-            # Best: Higher scores first
+        if sort == 'top' or sort == 'best':
+            # Top/Best: Highest scores first
             queryset = queryset.order_by('-upvote_count', '-created_at')
         elif sort == 'controversial':
             # Controversial: Comments with similar up/down votes
@@ -56,6 +75,23 @@ class CommentViewSet(viewsets.ModelViewSet):
                     output_field=FloatField()
                 )
             ).filter(upvote_count__gt=0, downvote_count__gt=0).order_by('-controversy')
+        elif sort == 'hot':
+            # Hot: Higher scores with recency factor
+            from django.db.models import F, ExpressionWrapper, FloatField
+            from django.db.models.functions import Log, Greatest
+            from datetime import timedelta
+            
+            queryset = queryset.annotate(
+                hours_passed=ExpressionWrapper(
+                    (timezone.now() - F('created_at')) / timedelta(hours=1),
+                    output_field=FloatField()
+                ),
+                hot_score=ExpressionWrapper(
+                    Log(Greatest(F('upvote_count') - F('downvote_count'), 1)) / 
+                    (Greatest(F('hours_passed'), 2) ** 1.5),
+                    output_field=FloatField()
+                )
+            ).order_by('-hot_score')
         elif sort == 'old':
             # Old: Oldest first
             queryset = queryset.order_by('created_at')

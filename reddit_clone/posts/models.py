@@ -4,6 +4,8 @@ from django.utils import timezone
 from django.utils.text import slugify
 from users.models import User
 from communities.models import Community, Flair
+from django.db.models import F
+import logging
 
 
 class Post(models.Model):
@@ -15,7 +17,7 @@ class Post(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
     title = models.CharField(max_length=300)
     path = models.SlugField(max_length=350, unique=True, blank=True, null=True)
-    content = models.TextField()
+    content = models.TextField(blank=True, null=True)  # Allow empty content if there's media attached
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(null=True, blank=True)
     is_edited = models.BooleanField(default=False)
@@ -48,6 +50,9 @@ class Post(models.Model):
         return self.title
     
     def save(self, *args, **kwargs):
+        # Track if this is a new post to increment user post count
+        is_new = self._state.adding
+        
         # Generate a slug if one doesn't exist
         if not self.path:
             # Base the slug on the title
@@ -64,23 +69,44 @@ class Post(models.Model):
                 counter += 1
             
             self.path = slug
+        
+        # Save the post
         super().save(*args, **kwargs)
+        
+        # Increment user's post count if this is a new post
+        if is_new and not self.is_deleted and hasattr(self.user, 'increment_post_count'):
+            self.user.increment_post_count()
     
     def get_absolute_url(self):
         """Return the URL for this post."""
         return f"/posts/{self.path}/"
     
-    def edit(self, content):
+    def edit(self, content=None):
         """Edit the post content."""
-        self.content = content
+        if content is not None:
+            self.content = content
+            
         self.updated_at = timezone.now()
         self.is_edited = True
-        self.save(update_fields=['content', 'updated_at', 'is_edited'])
+        
+        # Determine which fields to update
+        update_fields = ['updated_at', 'is_edited']
+        if content is not None:
+            update_fields.append('content')
+            
+        self.save(update_fields=update_fields)
     
     def soft_delete(self):
         """Soft delete the post (hide it but keep in DB)."""
+        # Get previous state to check if it was already deleted
+        was_already_deleted = self.is_deleted
+        
         self.is_deleted = True
         self.save(update_fields=['is_deleted'])
+        
+        # Decrement user's post count if the post wasn't already deleted
+        if not was_already_deleted and hasattr(self.user, 'decrement_post_count'):
+            self.user.decrement_post_count()
     
     def lock(self, locked_by, reason=None):
         """Lock the post to prevent new comments."""
@@ -112,24 +138,45 @@ class Post(models.Model):
     
     def increment_comment_count(self):
         """Increment the comment count."""
-        self.comment_count += 1
-        self.save(update_fields=['comment_count'])
+        logger = logging.getLogger('django')
+        
+        logger.info(f"Incrementing comment count for post {self.id}, current count: {self.comment_count}")
+        Post.objects.filter(id=self.id).update(comment_count=F('comment_count') + 1)
+        # Refresh from DB to keep the instance in sync
+        old_count = self.comment_count
+        self.refresh_from_db(fields=['comment_count'])
+        logger.info(f"Comment count incremented from {old_count} to {self.comment_count}")
+        return self.comment_count
     
     def decrement_comment_count(self):
         """Decrement the comment count."""
-        if self.comment_count > 0:
-            self.comment_count -= 1
-            self.save(update_fields=['comment_count'])
+        logger = logging.getLogger('django')
+        
+        logger.info(f"Decrementing comment count for post {self.id}, current count: {self.comment_count}")
+        Post.objects.filter(id=self.id).filter(comment_count__gt=0).update(comment_count=F('comment_count') - 1)
+        # Refresh from DB to keep the instance in sync
+        old_count = self.comment_count
+        self.refresh_from_db(fields=['comment_count'])
+        logger.info(f"Comment count decremented from {old_count} to {self.comment_count}")
+        return self.comment_count
     
     def update_vote_counts(self, upvotes, downvotes):
         """Update vote counts with fresh totals."""
-        self.upvote_count = upvotes
-        self.downvote_count = downvotes
-        self.save(update_fields=['upvote_count', 'downvote_count'])
+        Post.objects.filter(id=self.id).update(
+            upvote_count=upvotes,
+            downvote_count=downvotes
+        )
+        # Refresh from DB to keep the instance in sync
+        self.refresh_from_db(fields=['upvote_count', 'downvote_count'])
     
     def get_score(self):
         """Get the post score (upvotes - downvotes)."""
         return self.upvote_count - self.downvote_count
+    
+    @property
+    def has_attachment(self):
+        """Check if the post has any media attached."""
+        return self.media.exists()
 
 
 class PostMedia(models.Model):
@@ -138,7 +185,7 @@ class PostMedia(models.Model):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='media')
-    media_type = models.CharField(max_length=50)  # image, video, gif, etc.
+    media_type = models.CharField(max_length=50)  # e.g., image, video
     media_url = models.CharField(max_length=255)
     thumbnail_url = models.CharField(max_length=255, null=True, blank=True)
     order = models.IntegerField(default=0)

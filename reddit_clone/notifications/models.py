@@ -93,6 +93,12 @@ class Notification(models.Model):
         """Send a notification for a reply to a comment."""
         # Only send if the parent comment author is not the same as the reply author
         if comment.parent and comment.parent.user != comment.user:
+            # Construct URL using post path
+            post_path = comment.post.path
+            community_path = comment.post.community.path
+            # Optional: Add comment ID as fragment for scrolling/highlighting
+            link = f"/c/{community_path}/post/{post_path}/#comment-{comment.id}"
+            
             return cls.send_notification(
                 user=comment.parent.user,
                 notification_type=cls.COMMENT_REPLY,
@@ -100,7 +106,7 @@ class Notification(models.Model):
                 content_id=comment.id,
                 message=f"{comment.user.username} replied to your comment",
                 sender=comment.user,
-                link_url=f"/post/{comment.post.id}/comment/{comment.id}"
+                link_url=link
             )
         return None
     
@@ -109,37 +115,54 @@ class Notification(models.Model):
         """Send a notification for a reply to a post."""
         # Only send if the post author is not the same as the comment author
         if comment.post.user != comment.user:
+            # Construct URL using post path
+            post_path = comment.post.path
+            community_path = comment.post.community.path
+            # Optional: Add comment ID as fragment for scrolling/highlighting
+            link = f"/c/{community_path}/post/{post_path}/#comment-{comment.id}"
+            
             return cls.send_notification(
                 user=comment.post.user,
                 notification_type=cls.POST_REPLY,
-                content_type=cls.COMMENT,
+                content_type=cls.COMMENT, 
                 content_id=comment.id,
                 message=f"{comment.user.username} commented on your post",
                 sender=comment.user,
-                link_url=f"/post/{comment.post.id}/comment/{comment.id}"
+                link_url=link
             )
         return None
     
     @classmethod
     def send_vote_milestone_notification(cls, content_type, content_obj, milestone):
         """Send a notification for a vote milestone (e.g., 10, 50, 100 upvotes)."""
+        link = None
         if content_type == cls.POST:
+            # Construct URL using post path
+            post_path = content_obj.path
+            community_path = content_obj.community.path
+            link = f"/c/{community_path}/post/{post_path}/"
+            
             return cls.send_notification(
                 user=content_obj.user,
                 notification_type=cls.VOTE_MILESTONE,
                 content_type=cls.POST,
                 content_id=content_obj.id,
                 message=f"Your post reached {milestone} upvotes!",
-                link_url=f"/post/{content_obj.id}"
+                link_url=link
             )
         elif content_type == cls.COMMENT:
+            # Construct URL using post path and comment fragment
+            post_path = content_obj.post.path
+            community_path = content_obj.post.community.path
+            link = f"/c/{community_path}/post/{post_path}/#comment-{content_obj.id}"
+
             return cls.send_notification(
                 user=content_obj.user,
                 notification_type=cls.VOTE_MILESTONE,
                 content_type=cls.COMMENT,
                 content_id=content_obj.id,
                 message=f"Your comment reached {milestone} upvotes!",
-                link_url=f"/post/{content_obj.post.id}/comment/{content_obj.id}"
+                link_url=link
             )
         return None
     
@@ -166,4 +189,39 @@ class Notification(models.Model):
             content_id=user.id,
             message=f"Welcome to Reddit Clone, {user.username}! We're glad you're here.",
             link_url="/help/getting-started"
+        )
+
+    @classmethod
+    def send_mention_notification(cls, mentioned_user, content_obj, sender):
+        """Send a notification when a user is mentioned in a post or comment."""
+        # Don't notify users about their own mentions
+        if mentioned_user.id == sender.id:
+            return None
+            
+        content_type = None
+        link_url = None
+        message = None
+        
+        # Determine content type and create appropriate link
+        if hasattr(content_obj, 'title'):  # It's a post
+            content_type = cls.POST
+            post_path = content_obj.path
+            community_path = content_obj.community.path
+            link_url = f"/c/{community_path}/post/{post_path}/"
+            message = f"{sender.username} mentioned you in a post: {content_obj.title}"
+        else:  # It's a comment
+            content_type = cls.COMMENT
+            post_path = content_obj.post.path
+            community_path = content_obj.post.community.path
+            link_url = f"/c/{community_path}/post/{post_path}/#comment-{content_obj.id}"
+            message = f"{sender.username} mentioned you in a comment"
+            
+        return cls.send_notification(
+            user=mentioned_user,
+            notification_type=cls.MENTION,
+            content_type=content_type,
+            content_id=content_obj.id,
+            message=message,
+            sender=sender,
+            link_url=link_url
         )

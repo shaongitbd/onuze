@@ -7,6 +7,7 @@ from .serializers import VoteSerializer
 from posts.models import Post
 from comments.models import Comment
 from security.models import AuditLog
+from notifications.models import Notification
 
 
 class VoteViewSet(viewsets.ModelViewSet):
@@ -61,6 +62,21 @@ class VoteViewSet(viewsets.ModelViewSet):
                 user_agent=self.request.META.get('HTTP_USER_AGENT', ''),
                 status='success',
                 details={'vote_id': str(vote.id)}
+            )
+            
+            # Check for vote milestones and send notifications
+            if vote.vote_type == Vote.UPVOTE:
+                content_obj = vote.post if vote.content_type == Vote.POST else vote.comment
+                if content_obj:
+                    # Milestones to check (upvotes)
+                    milestones = [10, 50, 100, 500, 1000]
+                    
+                    # If upvote count hits a milestone exactly, send notification
+                    if content_obj.upvote_count in milestones:
+                        Notification.send_vote_milestone_notification(
+                            content_type=vote.content_type,
+                            content_obj=content_obj,
+                            milestone=content_obj.upvote_count
             )
         except Exception as e:
             # Determine entity type from serializer data
@@ -226,7 +242,7 @@ class PostVoteView(generics.GenericAPIView):
         if vote is None:
             return Response({
                 'detail': f'Your {vote_label} has been removed.',
-                'vote_count': post.vote_count,
+                'vote_count': post.get_score(),
                 'upvote_count': post.upvote_count,
                 'downvote_count': post.downvote_count
             })
@@ -237,7 +253,7 @@ class PostVoteView(generics.GenericAPIView):
         return Response({
             'detail': f'Post has been {vote_label}d.',
             'vote': serializer.data,
-            'vote_count': post.vote_count,
+            'vote_count': post.get_score(),
             'upvote_count': post.upvote_count,
             'downvote_count': post.downvote_count
         })
@@ -298,7 +314,7 @@ class CommentVoteView(generics.GenericAPIView):
         if vote is None:
             return Response({
                 'detail': f'Your {vote_label} has been removed.',
-                'vote_count': comment.vote_count,
+                'vote_count': comment.get_score(),
                 'upvote_count': comment.upvote_count,
                 'downvote_count': comment.downvote_count
             })
@@ -309,7 +325,7 @@ class CommentVoteView(generics.GenericAPIView):
         return Response({
             'detail': f'Comment has been {vote_label}d.',
             'vote': serializer.data,
-            'vote_count': comment.vote_count,
+            'vote_count': comment.get_score(),
             'upvote_count': comment.upvote_count,
             'downvote_count': comment.downvote_count
         })
@@ -339,7 +355,7 @@ class PostVoteByPathView(generics.GenericAPIView):
             return Response({
                 'detail': 'Invalid vote type. Must be either 1 (upvote) or -1 (downvote).'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+        print(post.id)
         # Create or update the vote
         vote = Vote.create_or_update(
             user=request.user,
@@ -370,7 +386,7 @@ class PostVoteByPathView(generics.GenericAPIView):
         if vote is None:
             return Response({
                 'detail': f'Your {vote_label} has been removed.',
-                'vote_count': post.vote_count,
+                'vote_count': post.get_score(),
                 'upvote_count': post.upvote_count,
                 'downvote_count': post.downvote_count
             })
@@ -381,7 +397,7 @@ class PostVoteByPathView(generics.GenericAPIView):
         return Response({
             'detail': f'Post has been {vote_label}d.',
             'vote': serializer.data,
-            'vote_count': post.vote_count,
+            'vote_count': post.get_score(),
             'upvote_count': post.upvote_count,
             'downvote_count': post.downvote_count
         })

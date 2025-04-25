@@ -51,6 +51,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     bio = models.TextField(blank=True, null=True)
     avatar = models.CharField(max_length=255, blank=True, null=True)
     karma = models.IntegerField(default=0)
+    post_count = models.IntegerField(default=0)  # Track number of posts created by user
     two_factor_enabled = models.BooleanField(default=False)
     two_factor_secret = models.CharField(max_length=255, blank=True, null=True)
     failed_login_attempts = models.IntegerField(default=0)
@@ -100,6 +101,17 @@ class User(AbstractBaseUser, PermissionsMixin):
         """Decrement user's karma score."""
         self.karma -= amount
         self.save(update_fields=['karma'])
+    
+    def increment_post_count(self):
+        """Increment user's post count."""
+        self.post_count += 1
+        self.save(update_fields=['post_count'])
+    
+    def decrement_post_count(self):
+        """Decrement user's post count, ensuring it doesn't go below 0."""
+        if self.post_count > 0:
+            self.post_count -= 1
+            self.save(update_fields=['post_count'])
     
     def lock_account(self, duration_hours=24):
         """Lock user account for specified duration."""

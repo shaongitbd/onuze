@@ -1,11 +1,12 @@
-from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.conf import settings
-import requests
+from rest_framework import serializers
+import re
 import logging
-from captcha.fields import CaptchaField
+import requests
+from django.conf import settings
 from .models import Role, UserBlock
+from captcha.fields import CaptchaField
 
 User = get_user_model()
 
@@ -24,17 +25,28 @@ class UserSerializer(serializers.ModelSerializer):
     """
     Serializer for User model.
     """
+    communities = serializers.SerializerMethodField(read_only=True)
+    
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'date_joined', 'last_login',
             'bio', 'avatar', 'karma', 'is_verified', 'is_staff',
-            'two_factor_enabled'
+            'two_factor_enabled', 'communities'
         ]
         read_only_fields = [
             'id', 'email', 'date_joined', 'last_login', 'karma',
-            'is_verified', 'is_staff'
+            'is_verified', 'is_staff', 'communities'
         ]
+    
+    def get_communities(self, obj):
+        # Lazy import to avoid circular dependency
+        from communities.serializers import CommunityBriefSerializer
+        # Get the communities this user is a member of
+        communities = obj.communities.filter(is_approved=True).values_list('community', flat=True)
+        from communities.models import Community
+        communities = Community.objects.filter(id__in=communities)
+        return CommunityBriefSerializer(communities, many=True, context=self.context).data
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -60,7 +72,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Username must be at least 3 characters long.")
         
         # Check if username contains only allowed characters
-        import re
         if not re.match(r'^[a-zA-Z0-9_-]+$', value):
             raise serializers.ValidationError("Username can only contain letters, numbers, underscores, and hyphens.")
             
@@ -138,6 +149,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
             bio=validated_data.get('bio', ''),
             avatar=validated_data.get('avatar', '')
         )
+        
+        # Send welcome notification
+        from notifications.models import Notification
+        try:
+            Notification.send_welcome_notification(user)
+        except Exception as e:
+            # Log the error but continue with user creation
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send welcome notification: {str(e)}")
+            
         return user
 
 

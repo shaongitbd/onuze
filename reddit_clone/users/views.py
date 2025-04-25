@@ -47,9 +47,12 @@ User = get_user_model()
 class UserViewSet(viewsets.ModelViewSet):
     """
     API endpoint for users.
+    Uses username for detail view lookups.
     """
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
+    lookup_field = 'username'  # Use username for lookup
+    lookup_url_kwarg = 'username' # Explicitly set URL kwarg (optional but good practice)
     # Default permission is IsAuthenticated, overridden below
     
     def get_serializer_class(self):

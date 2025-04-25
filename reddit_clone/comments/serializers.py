@@ -12,16 +12,17 @@ class CommentSerializer(serializers.ModelSerializer):
     score = serializers.IntegerField(source='get_score', read_only=True)
     reply_count = serializers.IntegerField(source='get_reply_count', read_only=True)
     depth = serializers.IntegerField(read_only=True)
+    post_path = serializers.CharField(source='post.path', read_only=True)
     
     class Meta:
         model = Comment
         fields = [
-            'id', 'post', 'user', 'parent', 'content', 'created_at', 
+            'id', 'post', 'post_path', 'user', 'parent', 'content', 'created_at', 
             'updated_at', 'is_edited', 'is_deleted', 'upvote_count', 
             'downvote_count', 'score', 'path', 'depth', 'reply_count'
         ]
         read_only_fields = [
-            'id', 'user', 'created_at', 'updated_at', 'is_edited', 
+            'id', 'post_path', 'user', 'created_at', 'updated_at', 'is_edited', 
             'is_deleted', 'upvote_count', 'downvote_count', 'score', 
             'path', 'depth', 'reply_count'
         ]
@@ -39,7 +40,23 @@ class CommentSerializer(serializers.ModelSerializer):
         # Set the user
         validated_data['user'] = request.user
         
-        return super().create(validated_data)
+        # Add debugging
+        print("COMMENT CREATE - VALIDATED DATA:", validated_data)
+        print("HAS ID FIELD:", 'id' in validated_data)
+        
+        # Check if there's an ID being passed in the validated data
+        if 'id' in validated_data:
+            print("REMOVING ID FROM DATA TO FORCE NEW OBJECT")
+            del validated_data['id']
+            
+        # Create a new comment instance rather than using super().create
+        from django.db import transaction
+        with transaction.atomic():
+            comment = Comment(**validated_data)
+            # Ensure pk is None to force creation of a new object
+            comment.pk = None
+            comment.save()
+            return comment
     
     def update(self, instance, validated_data):
         # If content was changed, use the edit method

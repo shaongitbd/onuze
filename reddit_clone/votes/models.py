@@ -7,6 +7,7 @@ from posts.models import Post
 from comments.models import Comment
 
 
+
 class Vote(models.Model):
     """
     Vote model for tracking upvotes and downvotes on posts and comments.
@@ -53,26 +54,39 @@ class Vote(models.Model):
     
     def save(self, *args, **kwargs):
         # Track if this is a new vote or an update
-        is_new = self.pk is None
+        # Use _state.adding instead of self.pk is None to correctly detect new objects
+        is_new = self._state.adding
+        print(f"In save(): is_new={is_new}, pk={self.pk}, _state.adding={self._state.adding}")
+        
+        old_vote_type = None
         if not is_new:
-            old_instance = Vote.objects.get(pk=self.pk)
-            old_vote_type = old_instance.vote_type
-        else:
-            old_vote_type = None
+            try:
+                old_instance = Vote.objects.get(pk=self.pk)
+                old_vote_type = old_instance.vote_type
+            except Vote.DoesNotExist:
+                print(f"Warning: Could not find Vote with pk={self.pk} in database, treating as new")
+                is_new = True # Treat as new if old record not found
         
-        # Save the vote
+        # Save the vote first before any other operations
         self.updated_at = timezone.now()
+        print(f"About to call super().save() with is_new={is_new}")
         super().save(*args, **kwargs)
+        print(f"super().save() completed, new pk={self.pk}")
         
-        # Update the vote counts on the content
-        self._update_content_vote_counts(is_new, old_vote_type)
-        
-        # Update user karma
-        if self.content_type == self.POST and hasattr(self, 'post'):
-            # Karma impact is higher for posts
-            self._update_user_karma(is_new, old_vote_type, multiplier=2)
-        else:
-            self._update_user_karma(is_new, old_vote_type)
+        # Now do the post-save operations with error handling
+        try:
+            # Update the vote counts on the content
+            self._update_content_vote_counts(is_new, old_vote_type)
+            
+            # Update user karma (without checking hasattr)
+            if self.content_type == self.POST:
+                # Karma impact is higher for posts
+                self._update_user_karma(is_new, old_vote_type, multiplier=2)
+            else:
+                self._update_user_karma(is_new, old_vote_type)
+        except Exception as e:
+            print(f"Error in post-save operations, but vote was saved: {e}")
+            # Don't re-raise the exception since we want the vote to be saved regardless
     
     def delete(self, *args, **kwargs):
         # Store vote info before deletion
@@ -88,89 +102,115 @@ class Vote(models.Model):
     
     def _update_content_vote_counts(self, is_new, old_vote_type, is_deletion=False):
         """Update vote counts on the content (post or comment)."""
-        if self.content_type == self.POST:
-            try:
-                post = Post.objects.get(id=self.content_id)
+        print(f"_update_content_vote_counts called: is_new={is_new}, old_vote_type={old_vote_type}, is_deletion={is_deletion}, self.vote_type={self.vote_type if not is_deletion else 'N/A'}")
+        
+        try:
+            if self.content_type == self.POST:
+                try:
+                    print(f"Getting post with id={self.content_id}")
+                    post = Post.objects.get(id=self.content_id)
+                    
+                    # Calculate updated vote counts
+                    upvotes = max(0, post.upvote_count)  # Ensure non-negative
+                    downvotes = max(0, post.downvote_count)  # Ensure non-negative
+                    print(f"Current post votes: up={upvotes}, down={downvotes}")
+                    
+                    if is_deletion:
+                        # Removing a vote
+                        if old_vote_type == self.UPVOTE:
+                            upvotes = max(0, upvotes - 1)
+                        elif old_vote_type == self.DOWNVOTE:
+                            downvotes = max(0, downvotes - 1)
+                    elif is_new:
+                        # Adding a new vote
+                        if self.vote_type == self.UPVOTE:
+                            upvotes += 1
+                            print(f"Adding upvote, new upvotes={upvotes}")
+                        elif self.vote_type == self.DOWNVOTE:
+                            downvotes += 1
+                            print(f"Adding downvote, new downvotes={downvotes}")
+                    else: # Changing vote type
+                        if old_vote_type == self.UPVOTE and self.vote_type == self.DOWNVOTE:
+                            upvotes = max(0, upvotes - 1)
+                            downvotes += 1
+                        elif old_vote_type == self.DOWNVOTE and self.vote_type == self.UPVOTE:
+                            downvotes = max(0, downvotes - 1)
+                            upvotes += 1
+                    
+                    print(f"New post votes: up={upvotes}, down={downvotes}")
+                    
+                    # Update the post
+                    print(f"Calling post.update_vote_counts({upvotes}, {downvotes})")
+                    post.update_vote_counts(upvotes, downvotes)
+                    print(f"After update_vote_counts, post has: up={post.upvote_count}, down={post.downvote_count}")
+                    
+                except Post.DoesNotExist:
+                    print(f"Post with id={self.content_id} not found!")
+                    pass  # Post may have been deleted
+                except Exception as e:
+                    print(f"Error updating post vote counts: {e}")
                 
-                # Calculate updated vote counts
-                upvotes = post.upvote_count
-                downvotes = post.downvote_count
-                
-                if is_deletion:
-                    # Removing a vote
-                    if old_vote_type == self.UPVOTE:
-                        upvotes -= 1
-                    elif old_vote_type == self.DOWNVOTE:
-                        downvotes -= 1
-                elif is_new:
-                    # Adding a new vote
-                    if self.vote_type == self.UPVOTE:
-                        upvotes += 1
-                    elif self.vote_type == self.DOWNVOTE:
-                        downvotes += 1
-                else:
-                    # Changing vote type
-                    if old_vote_type == self.UPVOTE and self.vote_type == self.DOWNVOTE:
-                        upvotes -= 1
-                        downvotes += 1
-                    elif old_vote_type == self.DOWNVOTE and self.vote_type == self.UPVOTE:
-                        downvotes -= 1
-                        upvotes += 1
-                
-                # Update the post
-                post.update_vote_counts(upvotes, downvotes)
-                
-            except Post.DoesNotExist:
-                pass  # Post may have been deleted
-                
-        elif self.content_type == self.COMMENT:
-            try:
-                comment = Comment.objects.get(id=self.content_id)
-                
-                # Calculate updated vote counts
-                upvotes = comment.upvote_count
-                downvotes = comment.downvote_count
-                
-                if is_deletion:
-                    # Removing a vote
-                    if old_vote_type == self.UPVOTE:
-                        upvotes -= 1
-                    elif old_vote_type == self.DOWNVOTE:
-                        downvotes -= 1
-                elif is_new:
-                    # Adding a new vote
-                    if self.vote_type == self.UPVOTE:
-                        upvotes += 1
-                    elif self.vote_type == self.DOWNVOTE:
-                        downvotes += 1
-                else:
-                    # Changing vote type
-                    if old_vote_type == self.UPVOTE and self.vote_type == self.DOWNVOTE:
-                        upvotes -= 1
-                        downvotes += 1
-                    elif old_vote_type == self.DOWNVOTE and self.vote_type == self.UPVOTE:
-                        downvotes -= 1
-                        upvotes += 1
-                
-                # Update the comment
-                comment.update_vote_counts(upvotes, downvotes)
-                
-            except Comment.DoesNotExist:
-                pass  # Comment may have been deleted
+            elif self.content_type == self.COMMENT:
+                try:
+                    comment = Comment.objects.get(id=self.content_id)
+                    
+                    # Calculate updated vote counts
+                    upvotes = max(0, comment.upvote_count)
+                    downvotes = max(0, comment.downvote_count)
+                    
+                    if is_deletion:
+                        if old_vote_type == self.UPVOTE:
+                            upvotes = max(0, upvotes - 1)
+                        elif old_vote_type == self.DOWNVOTE:
+                            downvotes = max(0, downvotes - 1)
+                    elif is_new:
+                        if self.vote_type == self.UPVOTE:
+                            upvotes += 1
+                        elif self.vote_type == self.DOWNVOTE:
+                            downvotes += 1
+                    else: # Changing vote type
+                        if old_vote_type == self.UPVOTE and self.vote_type == self.DOWNVOTE:
+                            upvotes = max(0, upvotes - 1)
+                            downvotes += 1
+                        elif old_vote_type == self.DOWNVOTE and self.vote_type == self.UPVOTE:
+                            downvotes = max(0, downvotes - 1)
+                            upvotes += 1
+                    
+                    # Update the comment
+                    comment.update_vote_counts(upvotes, downvotes)
+                    
+                except Comment.DoesNotExist:
+                    pass  # Comment may have been deleted
+                except Exception as e:
+                    print(f"Error updating comment vote counts: {e}")
+                    
+        except Exception as e:
+            print(f"Unhandled error in _update_content_vote_counts: {e}")
+            # Don't re-raise, we want the vote to be saved regardless
     
     def _update_user_karma(self, is_new, old_vote_type, multiplier=1, is_deletion=False):
         """Update the user's karma based on the vote."""
         try:
             # Get the author of the content
+            content_author = None
             if self.content_type == self.POST:
-                content_author = Post.objects.get(id=self.content_id).user
+                try:
+                    content_author = Post.objects.select_related('user').get(id=self.content_id).user
+                except Post.DoesNotExist:
+                    pass # Post deleted
             elif self.content_type == self.COMMENT:
-                content_author = Comment.objects.get(id=self.content_id).user
-            else:
-                return  # Unknown content type
+                try:
+                    content_author = Comment.objects.select_related('user').get(id=self.content_id).user
+                except Comment.DoesNotExist:
+                    pass # Comment deleted
             
+            if not content_author:
+                 print(f"Could not find author for {self.content_type} {self.content_id}")
+                 return # No author found
+
             # Skip if voting on own content
-            if content_author == self.user:
+            if content_author.id == self.user.id:
+                print(f"User {self.user.id} voting on own content {self.content_type} {self.content_id}, skipping karma update.")
                 return
             
             # Calculate karma change
@@ -181,28 +221,34 @@ class Vote(models.Model):
                 if old_vote_type == self.UPVOTE:
                     karma_change = -1 * multiplier
                 elif old_vote_type == self.DOWNVOTE:
-                    karma_change = 1 * multiplier
+                    # Removing a downvote increases karma
+                    karma_change = 1 * multiplier 
             elif is_new:
                 # Adding a new vote
                 if self.vote_type == self.UPVOTE:
                     karma_change = 1 * multiplier
                 elif self.vote_type == self.DOWNVOTE:
                     karma_change = -1 * multiplier
-            else:
-                # Changing vote type
+            else: # Changing vote type
                 if old_vote_type == self.UPVOTE and self.vote_type == self.DOWNVOTE:
-                    karma_change = -2 * multiplier
+                    karma_change = -2 * multiplier # Remove upvote effect, add downvote effect
                 elif old_vote_type == self.DOWNVOTE and self.vote_type == self.UPVOTE:
-                    karma_change = 2 * multiplier
+                    karma_change = 2 * multiplier # Remove downvote effect, add upvote effect
             
-            # Update the user's karma
-            if karma_change > 0:
-                content_author.increment_karma(amount=karma_change)
-            elif karma_change < 0:
-                content_author.decrement_karma(amount=abs(karma_change))
+            # Update the user's karma if there's a change
+            if karma_change != 0:
+                print(f"Updating karma for user {content_author.id} by {karma_change}")
+                if karma_change > 0:
+                    content_author.increment_karma(amount=karma_change)
+                else:
+                    content_author.decrement_karma(amount=abs(karma_change))
+                print(f"User {content_author.id} karma updated.")
+            else:
+                print(f"No karma change for user {content_author.id}")
                 
-        except (Post.DoesNotExist, Comment.DoesNotExist):
-            pass  # Content may have been deleted
+        except Exception as e:
+             print(f"Error updating user karma: {e}")
+             # Log this error but don't block the vote operation
     
     @property
     def post(self):
@@ -227,30 +273,46 @@ class Vote(models.Model):
     @classmethod
     def create_or_update(cls, user, content_type, content_id, vote_type):
         """Create a new vote or update an existing one."""
+        print(f"create_or_update called: user={user.id}, content_type={content_type}, content_id={content_id}, vote_type={vote_type}")
         try:
-            vote = cls.objects.get(
+            vote = Vote.objects.get(
                 user=user,
                 content_type=content_type,
                 content_id=content_id
             )
+            print(f"Found existing vote: {vote.id}")
             
             # If vote type is the same, remove the vote (toggle)
             if vote.vote_type == vote_type:
+                print(f"Deleting vote {vote.id} (toggle behavior)")
                 vote.delete()
                 return None
             else:
+                print(f"Updating vote {vote.id} from {vote.vote_type} to {vote_type}")
                 vote.vote_type = vote_type
                 vote.updated_at = timezone.now()
                 vote.save()
                 return vote
                 
-        except cls.DoesNotExist:
+        except Vote.DoesNotExist:
             # Create a new vote
-            vote = cls(
-                user=user,
-                content_type=content_type,
-                content_id=content_id,
-                vote_type=vote_type
-            )
-            vote.save()
-            return vote
+            print("No existing vote found, creating new one")
+            try:
+                vote = Vote(
+                    user=user,
+                    content_type=content_type,
+                    content_id=content_id,
+                    vote_type=vote_type
+                )
+                print(f"Created vote object, about to save: {vars(vote)}")
+                vote.save()
+                print(f"Vote saved successfully! New ID: {vote.id}")
+                return vote
+            except Exception as e:
+                print(f"ERROR SAVING VOTE: {str(e)}")
+                # Let's print the object details
+                # Check if 'vote' exists before trying to access vars(vote)
+                if 'vote' in locals(): 
+                    for key, value in vars(vote).items():
+                        print(f"  {key}: {value} (type: {type(value)}) D")
+                raise

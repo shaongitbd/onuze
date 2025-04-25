@@ -9,6 +9,7 @@ from .serializers import (
 )
 from .permissions import IsCommunityOwnerOrReadOnly, IsCommunityModeratorOrReadOnly
 from security.models import AuditLog
+from django.db.models import F
 
 
 class CommunityViewSet(viewsets.ModelViewSet):
@@ -20,6 +21,16 @@ class CommunityViewSet(viewsets.ModelViewSet):
     print(queryset)
     serializer_class = CommunitySerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCommunityOwnerOrReadOnly]
+    
+    def get_permissions(self):
+        """
+        Override to specify different permissions for different actions.
+        """
+        if self.action in ['join', 'leave']:
+            # For join and leave actions, only require authentication
+            return [permissions.IsAuthenticated()]
+        # For other actions, use the default permission_classes
+        return [permission() for permission in self.permission_classes]
     
     def perform_create(self, serializer):
         try:
@@ -162,6 +173,13 @@ class CommunityViewSet(viewsets.ModelViewSet):
             is_approved=is_approved
         )
         
+        # Increment member count if the join is approved immediately
+        if is_approved:
+            community.member_count = F('member_count') + 1
+            community.save(update_fields=['member_count'])
+            # Refresh from db to get the updated value
+            community.refresh_from_db()
+        
         # Log join action
         approval_status = "approved" if is_approved else "pending"
         AuditLog.log(
@@ -204,6 +222,14 @@ class CommunityViewSet(viewsets.ModelViewSet):
                 user_agent=request.META.get('HTTP_USER_AGENT', ''),
                 details={'community_name': community.name}
             )
+            
+            # Check if the member was approved before decrementing count
+            if membership.is_approved:
+                # Decrement member count
+                community.member_count = F('member_count') - 1
+                community.save(update_fields=['member_count'])
+                # Refresh from db to get the updated value
+                community.refresh_from_db()
             
             # Delete membership and any moderator status
             membership.delete()

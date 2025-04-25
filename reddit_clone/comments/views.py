@@ -9,6 +9,7 @@ from communities.models import CommunityModerator
 from security.models import AuditLog
 from datetime import timedelta
 from django.utils import timezone
+from rest_framework.exceptions import PermissionDenied
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -23,8 +24,12 @@ class CommentViewSet(viewsets.ModelViewSet):
         
         # Filter by post
         post_id = self.request.query_params.get('post', None)
+        post_path = self.request.query_params.get('post_path', None)
+        
         if post_id:
             queryset = queryset.filter(post__id=post_id)
+        elif post_path:
+            queryset = queryset.filter(post__path=post_path)
         
         # Filter by parent comment
         parent_id = self.request.query_params.get('parent', None)
@@ -36,10 +41,10 @@ class CommentViewSet(viewsets.ModelViewSet):
                 # Get replies to a specific comment
                 queryset = queryset.filter(parent__id=parent_id)
         
-        # Filter by user
-        user_id = self.request.query_params.get('user', None)
-        if user_id:
-            queryset = queryset.filter(user__id=user_id)
+        # Filter by user (username only)
+        username = self.request.query_params.get('username', None)
+        if username:
+            queryset = queryset.filter(user__username=username)
         
         # Time-based filtering
         time_filter = self.request.query_params.get('time', None)
@@ -66,29 +71,31 @@ class CommentViewSet(viewsets.ModelViewSet):
         elif sort == 'controversial':
             # Controversial: Comments with similar up/down votes
             from django.db.models import F, ExpressionWrapper, FloatField
-            from django.db.models.functions import Greatest
+            from django.db.models.functions import Greatest, Abs
             
             queryset = queryset.annotate(
                 controversy=ExpressionWrapper(
                     (F('upvote_count') + F('downvote_count')) / 
-                    (Greatest(abs(F('upvote_count') - F('downvote_count')), 1)),
+                    (Greatest(Abs(F('upvote_count') - F('downvote_count')), 1)),
                     output_field=FloatField()
                 )
             ).filter(upvote_count__gt=0, downvote_count__gt=0).order_by('-controversy')
         elif sort == 'hot':
             # Hot: Higher scores with recency factor
-            from django.db.models import F, ExpressionWrapper, FloatField
-            from django.db.models.functions import Log, Greatest
-            from datetime import timedelta
+            from django.db.models import F, ExpressionWrapper, FloatField, Value
+            from django.db.models.functions import Log, Greatest, Extract
             
             queryset = queryset.annotate(
                 hours_passed=ExpressionWrapper(
-                    (timezone.now() - F('created_at')) / timedelta(hours=1),
+                    # Calculate the age in hours using Extract function in PostgreSQL
+                    # Add 0.1 to ensure we never have zero hours
+                    Extract(timezone.now() - F('created_at'), 'epoch') / 3600.0 + 0.1,
                     output_field=FloatField()
                 ),
+                score_diff=Greatest(F('upvote_count') - F('downvote_count'), 1),
                 hot_score=ExpressionWrapper(
-                    Log(Greatest(F('upvote_count') - F('downvote_count'), 1)) / 
-                    (Greatest(F('hours_passed'), 2) ** 1.5),
+                    Log(F('score_diff'), 10) / 
+                    ((F('hours_passed')) ** 1.5),
                     output_field=FloatField()
                 )
             ).order_by('-hot_score')
@@ -102,8 +109,26 @@ class CommentViewSet(viewsets.ModelViewSet):
         return queryset
     
     def perform_create(self, serializer):
+        # Check if the post is locked before allowing comment creation
+        post = serializer.validated_data.get('post')
+        if post.is_locked:
+            raise PermissionDenied(f"Cannot add comments: This post has been locked by a moderator. ")
+            
         try:
             comment = serializer.save()
+            
+            # Send notifications for new comments
+            from notifications.models import Notification
+            
+            # Send notification to post author if this is a direct comment on the post
+            if not comment.parent:
+                Notification.send_post_reply_notification(comment)
+            # Send notification to parent comment author if this is a reply
+            else:
+                Notification.send_comment_reply_notification(comment)
+            
+            # Process @mentions in the comment content
+            self.process_mentions(comment)
             
             # Log comment creation
             AuditLog.log(
@@ -138,6 +163,31 @@ class CommentViewSet(viewsets.ModelViewSet):
                 }
             )
             raise
+    
+    def process_mentions(self, comment):
+        """Process @mentions in the comment content and send notifications."""
+        import re
+        from django.contrib.auth import get_user_model
+        from notifications.models import Notification
+        
+        User = get_user_model()
+        
+        # Extract all @usernames from the comment text
+        mention_pattern = r'@(\w+)'
+        mentions = re.findall(mention_pattern, comment.content)
+        
+        # Send notification to each mentioned user
+        for username in mentions:
+            try:
+                mentioned_user = User.objects.get(username=username)
+                Notification.send_mention_notification(
+                    mentioned_user=mentioned_user,
+                    content_obj=comment,
+                    sender=comment.user
+                )
+            except User.DoesNotExist:
+                # Username doesn't exist, skip it
+                pass
     
     def perform_update(self, serializer):
         try:
@@ -229,6 +279,16 @@ class CommentViewSet(viewsets.ModelViewSet):
         
         reason = request.data.get('reason', '')
         comment.remove(request.user, reason)
+        
+        # Send notification to comment author about the removal
+        from notifications.models import Notification
+        Notification.send_mod_action_notification(
+            user=comment.user,
+            community=comment.post.community,
+            action=f"Your comment was removed: {reason}",
+            admin_user=request.user,
+            link_url=f"/post/{comment.post.id}"
+        )
         
         # Log comment removal by moderator
         AuditLog.log(

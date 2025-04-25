@@ -234,10 +234,13 @@ def get_upload_path(instance, filename, upload_dir=DEFAULT_UPLOAD_DIR):
     safe_filename = generate_safe_filename(filename)
     
     # Generate a directory structure based on current date
-    # from datetime import datetime
     date_path = datetime.now().strftime('%Y/%m/%d')
     
-    return os.path.join(upload_dir, date_path, safe_filename)
+    # Use forward slashes for path compatibility with cloud storage
+    path = f"{upload_dir}/{date_path}/{safe_filename}"
+    # Ensure we don't have double slashes
+    path = path.replace('//', '/')
+    return path
 
 
 def validate_image(file):

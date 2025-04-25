@@ -190,7 +190,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 20,
+    'PAGE_SIZE': 10,
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle'
@@ -374,8 +374,20 @@ YASG_AUTO_SCHEMA_CLASS = 'drf_yasg.inspectors.SwaggerAutoSchema'
 # Backblaze B2 Storage Configuration
 DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'  # Fallback to local storage
 
-# Enable Backblaze storage if credentials are configured
-if os.environ.get('USE_BACKBLAZE', 'False').lower() == 'true':
+# Enable Bunny.net storage if credentials are configured
+if os.environ.get('USE_BUNNY_STORAGE', 'False').lower() == 'true':
+    DEFAULT_FILE_STORAGE = 'storage.BunnyStorage'
+    
+    # Bunny.net Storage credentials
+    BUNNY_STORAGE_API_KEY = os.environ.get('BUNNY_STORAGE_API_KEY')
+    BUNNY_STORAGE_ZONE = os.environ.get('BUNNY_STORAGE_ZONE')
+    BUNNY_STORAGE_REGION = os.environ.get('BUNNY_STORAGE_REGION', 'de')
+    BUNNY_STORAGE_URL = os.environ.get('BUNNY_STORAGE_URL', f'https://{BUNNY_STORAGE_ZONE}.b-cdn.net/')
+    
+    # Media specific storage
+    MEDIA_URL = BUNNY_STORAGE_URL
+# Enable Backblaze storage if credentials are configured (legacy support)
+elif os.environ.get('USE_BACKBLAZE', 'False').lower() == 'true':
     DEFAULT_FILE_STORAGE = 'core.storage.BackblazeB2Storage'
     
     # Backblaze B2 credentials

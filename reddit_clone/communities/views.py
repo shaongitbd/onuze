@@ -381,6 +381,111 @@ class CommunityMemberViewSet(viewsets.ModelViewSet):
         return Response({'detail': 'Member approved successfully.'})
     
     @action(detail=True, methods=['post'])
+    def ban(self, request, pk=None):
+        member = self.get_object()
+        
+        # Check if the requester is a moderator
+        if not CommunityModerator.objects.filter(
+            community=member.community, user=request.user).exists() and not request.user.is_staff:
+            return Response({'detail': 'Only moderators can ban members.'},
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        # Get ban parameters
+        reason = request.data.get('reason', '')
+        duration_days = request.data.get('duration_days')
+        if duration_days:
+            try:
+                duration_days = int(duration_days)
+            except (TypeError, ValueError):
+                return Response({'detail': 'Duration days must be a valid number.'},
+                               status=status.HTTP_400_BAD_REQUEST)
+        
+        # Ban the member
+        member.ban(reason=reason, banned_by=request.user, duration_days=duration_days)
+        
+        # Create a ban duration message for notification
+        if duration_days:
+            duration_msg = f" for {duration_days} days"
+        else:
+            duration_msg = " permanently"
+        
+        # Send notification to the banned user
+        from notifications.models import Notification
+        Notification.send_mod_action_notification(
+            user=member.user,
+            community=member.community,
+            action=f"You have been banned from r/{member.community.name}{duration_msg}: {reason}",
+            admin_user=request.user,
+            link_url=f"/c/{member.community.path}"
+        )
+        
+        # Log member ban
+        AuditLog.log(
+            action='community_member_ban',
+            entity_type='community_member',
+            entity_id=member.id,
+            user=request.user,
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            details={
+                'community_id': str(member.community.id),
+                'community_name': member.community.name,
+                'user_id': str(member.user.id),
+                'username': member.user.username,
+                'reason': reason,
+                'duration_days': duration_days
+            }
+        )
+        
+        return Response({'detail': 'Member banned successfully.'})
+    
+    @action(detail=True, methods=['post'])
+    def unban(self, request, pk=None):
+        member = self.get_object()
+        
+        # Check if the requester is a moderator
+        if not CommunityModerator.objects.filter(
+            community=member.community, user=request.user).exists() and not request.user.is_staff:
+            return Response({'detail': 'Only moderators can unban members.'},
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        # Check if member is banned
+        if not member.is_banned:
+            return Response({'detail': 'This member is not banned.'},
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Unban the member
+        member.unban()
+        
+        # Send notification to the unbanned user
+        from notifications.models import Notification
+        Notification.send_mod_action_notification(
+            user=member.user,
+            community=member.community,
+            action=f"Your ban from r/{member.community.name} has been lifted",
+            admin_user=request.user,
+            link_url=f"/c/{member.community.path}"
+        )
+        
+        # Log member unban
+        AuditLog.log(
+            action='community_member_unban',
+            entity_type='community_member',
+            entity_id=member.id,
+            user=request.user,
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            details={
+                'community_id': str(member.community.id),
+                'community_name': member.community.name,
+                'user_id': str(member.user.id),
+                'username': member.user.username
+            }
+        )
+        
+        return Response({'detail': 'Member unbanned successfully.'})
+    
+    @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         member = self.get_object()
         

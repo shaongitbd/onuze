@@ -167,28 +167,28 @@ export default function PostDetailPage() {
       setHasMoreComments(!!commentsData.next);
       setTotalCommentCount(commentsData.count || 0);
       
-      if (commentsData && Array.isArray(commentsData.results)) {
-        // Create a flat map of all comments by ID
-        const commentsById = {};
-        commentsData.results.forEach(comment => {
-          commentsById[comment.id] = {...comment, replies: []};
-        });
-        
-        // Build the comment tree
-        const rootComments = [];
-        commentsData.results.forEach(comment => {
-          // If the comment has a parent and we have that parent in our map
-          if (comment.parent && commentsById[comment.parent]) {
-            // Add this comment as a reply to its parent
-            commentsById[comment.parent].replies.push(commentsById[comment.id]);
-          } else {
-            // This is a top-level comment or has a parent we don't have data for
-            rootComments.push(commentsById[comment.id]);
-          }
-        });
-        
+          if (commentsData && Array.isArray(commentsData.results)) {
+            // Create a flat map of all comments by ID
+            const commentsById = {};
+            commentsData.results.forEach(comment => {
+              commentsById[comment.id] = {...comment, replies: []};
+            });
+            
+            // Build the comment tree
+            const rootComments = [];
+            commentsData.results.forEach(comment => {
+              // If the comment has a parent and we have that parent in our map
+              if (comment.parent && commentsById[comment.parent]) {
+                // Add this comment as a reply to its parent
+                commentsById[comment.parent].replies.push(commentsById[comment.id]);
+              } else {
+                // This is a top-level comment or has a parent we don't have data for
+                rootComments.push(commentsById[comment.id]);
+              }
+            });
+            
         // Custom sort based on selected option
-        const sortComments = (comments) => {
+            const sortComments = (comments) => {
           switch (sort) {
             case 'old':
               comments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -209,34 +209,34 @@ export default function PostDetailPage() {
           }
           
           // Always sort replies by newest first (this could be customized further if needed)
-          comments.forEach(comment => {
-            if (comment.replies && comment.replies.length > 0) {
+              comments.forEach(comment => {
+                if (comment.replies && comment.replies.length > 0) {
               comment.replies.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-              sortComments(comment.replies);
-            }
-          });
-          return comments;
-        };
-        
+                  sortComments(comment.replies);
+                }
+              });
+              return comments;
+            };
+            
         const sortedComments = sortComments(rootComments);
         
         // For initial load or filter change, replace comments
         // For infinite scroll (nextUrl exists), append new comments
         if (nextUrl) {
           setComments(prevComments => [...prevComments, ...sortedComments]);
-        } else {
+          } else {
           setComments(sortedComments);
-        }
-      } else {
+          }
+        } else {
         console.warn("Comments data received in unexpected format:", commentsData);
         if (!nextUrl) {
           // Only reset for initial load
           setComments([]);
         }
-      }
-    } catch (err) {
+        }
+      } catch (err) {
       console.error('Error fetching comments:', err);
-    } finally {
+      } finally {
       setIsFiltering(false);
       setLoadingMoreComments(false);
     }
@@ -948,23 +948,23 @@ export default function PostDetailPage() {
                   
                   {/* Edit button (Owner only) */}
                   {canEdit && (
-                    <Link href={editUrl} 
+                      <Link href={editUrl} 
                       className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600">
                        <PencilIcon className="w-4 h-4 mr-1" /> {/* Changed icon */}
-                      <span>Edit</span>
-                    </Link>
+                        <span>Edit</span>
+                      </Link>
                   )}
                       
                   {/* Delete button (Owner or Moderator) */}
                   {(isOwner || isModerator) && (
-                    <button 
-                      onClick={handleDeletePost}
-                      className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600"
+                      <button 
+                        onClick={handleDeletePost}
+                        className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600"
                       disabled={moderatorActionLoading} // Use moderator loading state
                     >
                        <TrashIcon className="w-4 h-4 mr-1" /> {/* Changed icon */}
                       <span>{moderatorActionLoading ? 'Deleting...' : 'Delete'}</span>
-                    </button>
+                      </button>
                   )}
 
                   {/* Moderator Actions */}
@@ -1033,8 +1033,7 @@ export default function PostDetailPage() {
               <div className="mt-6">
                 <h3 className="text-lg font-medium mb-2">Comments</h3>
                 
-                {/* Comment form - Only show if post is not locked */}
-                {!post?.is_locked && (
+                {/* Comment form */}
                 <div className="mb-4 bg-white border border-gray-300 rounded-md p-4">
                   <textarea
                     className="w-full px-3 py-2 text-gray-700 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
@@ -1063,7 +1062,6 @@ export default function PostDetailPage() {
                     </button>
                   </div>
                 </div>
-                )}
                 
                 {/* Lock Overlay for Comments */}
                 {post?.is_locked && (
@@ -1072,12 +1070,12 @@ export default function PostDetailPage() {
                      <span>Comments on this post are locked. {post.locked_reason ? `Reason: ${post.locked_reason}` : ''}</span>
                   </div>
                 )}
-
+                
                 {/* Comment sorting options */}
                 <div className="flex flex-wrap items-center mb-4 border-b pb-2">
                   <div className="text-xs font-medium text-gray-500 mr-2">Sort comments by:</div>
                   <div className="flex flex-wrap gap-2">
-                    <button
+                <button
                       className={`text-xs px-2 py-1 rounded ${sortOption === 'new' ? 'bg-gray-200 text-gray-800' : 'text-gray-500 hover:bg-gray-100'}`}
                       onClick={() => handleSortChange('new')}
                       disabled={isFiltering}
@@ -1111,7 +1109,7 @@ export default function PostDetailPage() {
                       disabled={isFiltering}
                     >
                       Old
-                    </button>
+                </button>
                   </div>
                   
                   {/* Time filter - only shown for relevant sort options */}
@@ -1130,21 +1128,21 @@ export default function PostDetailPage() {
                         <option value="month">This Month</option>
                         <option value="year">This Year</option>
                       </select>
-                    </div>
-                  )}
+            </div>
+                    )}
                   
                   {/* Filtering indicator */}
                   {isFiltering && (
                     <div className="ml-2 flex items-center">
                       <div className="w-4 h-4 border-2 border-gray-400 border-t-blue-500 rounded-full animate-spin mr-1"></div>
                       <span className="text-xs text-gray-500">Updating...</span>
-                    </div>
+                  </div>
                   )}
-                </div>
-                
-                {comments.length === 0 ? (
-                  <p className="text-gray-500">No comments yet. Be the first to comment!</p>
-                ) : (
+          </div>
+              
+              {comments.length === 0 ? (
+                <p className="text-gray-500">No comments yet. Be the first to comment!</p>
+              ) : (
                   <InfiniteScroll
                     dataLength={comments.length}
                     next={loadMoreComments}
@@ -1162,26 +1160,26 @@ export default function PostDetailPage() {
                       </p>
                     }
                   >
-                    <ul className="space-y-5">
-                      {comments.map(comment => (
-                        <CommentItem 
-                          key={comment.id} 
-                          comment={comment} 
-                          post={post} 
-                          handleDeleteComment={handleDeleteComment}
-                          handleEditComment={handleEditComment}
-                          handleCommentVote={handleCommentVote}
-                          isAuthenticated={isAuthenticated}
-                          user={user}
-                          setComments={setComments}
-                          createComment={createComment}
-                          level={0}
+                <ul className="space-y-5">
+                  {comments.map(comment => (
+                    <CommentItem 
+                      key={comment.id} 
+                      comment={comment} 
+                      post={post} 
+                      handleDeleteComment={handleDeleteComment}
+                      handleEditComment={handleEditComment}
+                      handleCommentVote={handleCommentVote}
+                      isAuthenticated={isAuthenticated}
+                      user={user}
+                      setComments={setComments}
+                      createComment={createComment}
+                      level={0}
                           isPostLocked={post?.is_locked} // Pass lock status down
-                        />
-                      ))}
-                    </ul>
+                    />
+                  ))}
+                </ul>
                   </InfiniteScroll>
-                )}
+              )}
               </div>
             </div>
           </div>
@@ -1500,25 +1498,17 @@ const CommentItem = ({
         <div className="flex items-center mb-2">
           {/* User avatar placeholder - wrapper div for positioning */}
           <div className="relative w-7 h-7 mr-2 flex-shrink-0">
-            {comment?.user?.avatar ? (
-              <img 
-                src={comment.user.avatar} 
-                alt={`${comment.user.username}'s avatar`}
-                className="w-7 h-7 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
-                {comment?.user?.username?.charAt(0).toUpperCase() || 'U'}
-              </div>
-            )}
+            <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
+              {comment?.user?.username?.charAt(0).toUpperCase() || 'U'}
+            </div>
             {/* Vertical thread line that aligns with avatar center */}
             {hasReplies && showReplies && (
               <div className="absolute w-[2px] bg-gray-400 left-1/2 -translate-x-1/2 top-full h-full"></div>
             )}
           </div>
-          <Link href={`/user/${comment?.user?.username}`}>
+          
           <span className="font-medium text-gray-800">{comment?.user?.username ?? '[deleted]'}</span>
-          </Link><span className="mx-2 text-gray-400">•</span>
+          <span className="mx-2 text-gray-400">•</span>
           <span className="text-xs text-gray-500">
             {formatDistanceToNow(new Date(comment?.created_at || Date.now()), { addSuffix: true })}
           </span>

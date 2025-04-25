@@ -143,6 +143,22 @@ class PostViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         try:
+            # Check if user is banned from the community
+            community = serializer.validated_data.get('community')
+            user = self.request.user
+            
+            # Check if member is banned
+            try:
+                member = CommunityMember.objects.get(community=community, user=user)
+                if member.is_banned_now():
+                    # Get ban details for the error message
+                    ban_reason = member.ban_reason or "No reason provided"
+                    ban_expiry = "permanently" if not member.banned_until else f"until {member.banned_until.strftime('%Y-%m-%d')}"
+                    raise PermissionDenied(f"You are banned from this community {ban_expiry}. Reason: {ban_reason}")
+            except CommunityMember.DoesNotExist:
+                # If not a member, they're not banned, so we can continue
+                pass
+            
             post = serializer.save()
             
             # Process @mentions in the post content

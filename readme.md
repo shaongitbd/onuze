@@ -1,6 +1,6 @@
 # Reddit Clone
 
-A modern Reddit clone built with Django REST Framework and Backblaze B2 media storage.
+A modern Reddit clone built with Django REST Framework and Bunny.net media storage.
 
 ## Features
 
@@ -9,7 +9,7 @@ A modern Reddit clone built with Django REST Framework and Backblaze B2 media st
 - Post creation with rich text and media
 - Commenting system with nested replies
 - Voting mechanism
-- Media uploads to Backblaze B2
+- Media uploads to Bunny.net Storage
 - Real-time notifications using WebSockets
 - Search functionality
 - Moderation tools
@@ -50,12 +50,20 @@ A modern Reddit clone built with Django REST Framework and Backblaze B2 media st
    DATABASE_URL=postgres://user:password@localhost:5432/redditclone
    REDIS_URL=redis://localhost:6379/0
    
-   # Backblaze B2 configuration
-   USE_BACKBLAZE=False  # Set to True in production
+   # Bunny.net Storage configuration
+   USE_BUNNY_STORAGE=True
+   BUNNY_STORAGE_API_KEY=your-api-key
+   BUNNY_STORAGE_ZONE=your-storage-zone
+   BUNNY_STORAGE_REGION=de  # Your preferred region (de, ny, sg, syd)
+   # Optional: Custom domain if configured in Bunny.net
+   BUNNY_STORAGE_URL=https://your-custom-domain.b-cdn.net/
+   
+   # Legacy Backblaze B2 configuration (not used if USE_BUNNY_STORAGE is True)
+   USE_BACKBLAZE=False
    B2_ACCESS_KEY=your-access-key
    B2_SECRET_KEY=your-secret-key
    B2_BUCKET_NAME=your-bucket-name
-   B2_REGION=eu-central-003  # Your B2 region
+   B2_REGION=eu-central-003
    ```
 
 5. Run migrations:
@@ -89,11 +97,21 @@ These interactive documentation pages allow you to:
 
 ## Media Storage
 
-The application uses Backblaze B2 for storing media files. The storage system is configured to handle:
+The application uses Bunny.net Storage for storing media files. The storage system is configured to handle:
 
 - Post images
 - Community images
 - User profile images
+
+### Bunny.net Storage Setup
+
+To use Bunny.net for media storage:
+
+1. Create a Bunny.net account at https://bunny.net/
+2. Create a Storage Zone in your desired region
+3. Get your Storage API Key and Zone name
+4. Update your `.env` file with the Bunny.net credentials
+5. Set `USE_BUNNY_STORAGE=True` in your `.env` file
 
 ### Upload Endpoint
 
@@ -110,7 +128,7 @@ Parameters:
 
 Response:
 {
-  "url": "https://s3.your-region.backblazeb2.com/your-bucket/path/to/image.jpg",
+  "url": "https://your-storage-zone.b-cdn.net/path/to/image.jpg",
   "success": true
 }
 ```
@@ -212,7 +230,7 @@ The application is designed to be deployed to a production environment with:
 - Daphne as the ASGI server (for WebSockets)
 - PostgreSQL for the database
 - Redis for caching and Channels
-- Backblaze B2 for media storage
+- Bunny.net for media storage
 
 ## License
 

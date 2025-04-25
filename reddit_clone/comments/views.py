@@ -113,6 +113,23 @@ class CommentViewSet(viewsets.ModelViewSet):
         post = serializer.validated_data.get('post')
         if post.is_locked:
             raise PermissionDenied(f"Cannot add comments: This post has been locked by a moderator. ")
+        
+        # Check if user is banned from the community
+        user = self.request.user
+        community = post.community
+        
+        # Check if member is banned
+        try:
+            from communities.models import CommunityMember
+            member = CommunityMember.objects.get(community=community, user=user)
+            if member.is_banned_now():
+                # Get ban details for the error message
+                ban_reason = member.ban_reason or "No reason provided"
+                ban_expiry = "permanently" if not member.banned_until else f"until {member.banned_until.strftime('%Y-%m-%d')}"
+                raise PermissionDenied(f"You are banned from this community {ban_expiry}. Reason: {ban_reason}")
+        except CommunityMember.DoesNotExist:
+            # If not a member, they're not banned, so we can continue
+            pass
             
         try:
             comment = serializer.save()

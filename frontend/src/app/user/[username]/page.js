@@ -205,15 +205,15 @@ export default function UserProfilePage() {
             {/* Avatar */}
             <div className="flex-shrink-0">
               <img src={profile.avatar} alt="User Avatar" className="w-16 h-16 rounded-full border-2 border-gray-200" />
-            </div>
+          </div>
             
             {/* Username and Join Date */}
             <div className="flex-grow">
               <h1 className="text-xl font-bold text-gray-800">{profile.username}</h1>
               <p className="text-sm text-gray-500">
                 Joined {new Date(profile.date_joined).toLocaleDateString()}
-              </p>
-            </div>
+            </p>
+          </div>
             
             {/* Edit Button */} 
             {user && user.username === profile.username && (
@@ -224,7 +224,7 @@ export default function UserProfilePage() {
                 >
                   Edit Profile
                 </Link>
-              </div>
+        </div>
             )}
           </div>
           

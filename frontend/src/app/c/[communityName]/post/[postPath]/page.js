@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { 
   getPostByPath, getComments, createComment, deletePost, deleteComment, 
   upvotePost, downvotePost, upvoteComment, downvoteComment, updateComment,
-  joinCommunity, leaveCommunity
+  joinCommunity, leaveCommunity,
+  getCommunityDetails, lockPost, unlockPost, pinPost, unpinPost
 } from '../../../../../lib/api';
 import { useAuth } from '../../../../../lib/auth';
 import Spinner from '../../../../../components/Spinner';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { LockClosedIcon, LockOpenIcon, MapPinIcon as PinIcon, TrashIcon, PencilIcon, FlagIcon, ShareIcon, LinkIcon } from '@heroicons/react/24/solid'; // Changed PinIcon to MapPinIcon
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -28,7 +30,7 @@ export default function PostDetailPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
-  const shareMenuRef = React.useRef(null);
+  const shareMenuRef = useRef(null);
   const [joiningCommunity, setJoiningCommunity] = useState(false);
   const [sortOption, setSortOption] = useState('new');
   const [timeFilter, setTimeFilter] = useState('all');
@@ -41,32 +43,80 @@ export default function PostDetailPage() {
   const [loadingMoreComments, setLoadingMoreComments] = useState(false);
   const [totalCommentCount, setTotalCommentCount] = useState(0);
 
-  // Fetch post and comments
-  React.useEffect(() => {
-    async function fetchPostAndComments() {
+  // Moderator State
+  const [isModerator, setIsModerator] = useState(false);
+  const [communityDetails, setCommunityDetails] = useState(null); // To store community data
+  const [showLockModal, setShowLockModal] = useState(false);
+  const [lockReason, setLockReason] = useState('');
+  const [moderatorActionLoading, setModeratorActionLoading] = useState(false);
+
+  // Refetch post data helper
+  const refetchPostData = async () => {
+    if (!postPath) return;
+    try {
+      const postData = await getPostByPath(postPath);
+      setPost(postData);
+    } catch (err) {
+      console.error("Error refetching post data:", err);
+      // Handle error appropriately, maybe show a notification
+    }
+  };
+
+  // Fetch post, comments, and community details
+  useEffect(() => {
+    async function fetchAllDetails() {
       try {
         setLoading(true);
+        setError(''); // Reset error on new fetch
         const postData = await getPostByPath(postPath);
         setPost(postData);
         
         if (postData && postData.path) {
           await fetchComments(postData.path, 'new', 'all', true);
+          
+          // Fetch community details if we have a community path
+          if (postData.community?.path) {
+            try {
+              const communityData = await getCommunityDetails(postData.community.path);
+              setCommunityDetails(communityData);
+              // Check if the current user is a moderator
+              if (user && communityData?.moderators) {
+                const isMod = communityData.moderators.some(mod => mod.user_id === user.id);
+                setIsModerator(isMod);
+              } else {
+                setIsModerator(false);
+              }
+            } catch (communityErr) {
+              console.error('Error fetching community details:', communityErr);
+              // Handle community fetch error - maybe post can still be viewed
+            }
+          } else {
+            setIsModerator(false); // No community path, cannot be moderator
+          }
+
         } else {
-          console.warn("Post data did not contain a path, cannot fetch comments.");
+          console.warn("Post data did not contain a path or community info.");
           setComments([]);
+          setIsModerator(false);
         }
       } catch (err) {
         console.error('Error fetching post details:', err);
-        setError('Post not found or you do not have access.');
+        setError('Post not found or an error occurred.');
+        setPost(null); // Ensure post is null on error
+        setIsModerator(false);
       } finally {
         setLoading(false);
       }
     }
 
-    if (postPath) {
-      fetchPostAndComments();
+    if (postPath && user !== undefined) { // Ensure auth state is resolved before fetching
+      fetchAllDetails();
+    } else if (!isLoading && user === null && postPath) {
+      // Handle fetching public post data when not logged in
+      fetchAllDetails(); 
     }
-  }, [postPath]);
+
+  }, [postPath, user, isLoading]); // Add user and isLoading dependency
 
   // Fetch comments with sorting and filtering
   const fetchComments = async (postPath, sort = sortOption, time = timeFilter, isInitialLoad = false, nextUrl = null) => {
@@ -369,24 +419,25 @@ export default function PostDetailPage() {
     }
   };
 
-  // Handle deleting the post
+  // Handle deleting the post (updated for moderators)
   const handleDeletePost = async () => {
-    if (!isAuthenticated || !user || !post || post?.user?.id !== user.id) {
+    const canDelete = (isAuthenticated && user && post?.user?.id === user.id) || isModerator;
+    
+    if (!canDelete) {
       alert('You are not authorized to delete this post.');
       return;
     }
 
     if (window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
       try {
-        setLoading(true); // Show loading indicator
+        setModeratorActionLoading(true); // Show loading indicator
         await deletePost(post.path);
         alert('Post deleted successfully.');
-        // Redirect to the community page after deletion
         router.push(`/c/${communityName}`); 
       } catch (err) {
         console.error('Error deleting post:', err);
         setError(err.message || 'Failed to delete post.');
-        setLoading(false); // Hide loading on error
+        setModeratorActionLoading(false); // Hide loading on error
       }
       // No finally setLoading(false) here, because we navigate away on success
     }
@@ -579,7 +630,76 @@ export default function PostDetailPage() {
     }
   };
 
-  if (loading || isLoading) {
+  // Moderator Actions Handlers
+  const handlePin = async () => {
+    if (!isModerator || !post || moderatorActionLoading) return;
+    try {
+      setModeratorActionLoading(true);
+      await pinPost(post.path);
+      await refetchPostData(); // Refetch to get updated pin status
+    } catch (err) {
+      console.error('Error pinning post:', err);
+      alert('Failed to pin post.');
+    } finally {
+      setModeratorActionLoading(false);
+    }
+  };
+
+  const handleUnpin = async () => {
+    if (!isModerator || !post || moderatorActionLoading) return;
+    try {
+      setModeratorActionLoading(true);
+      await unpinPost(post.path);
+      await refetchPostData(); // Refetch to get updated pin status
+    } catch (err) {
+      console.error('Error unpinning post:', err);
+      alert('Failed to unpin post.');
+    } finally {
+      setModeratorActionLoading(false);
+    }
+  };
+
+  const openLockModal = () => {
+    if (!isModerator || moderatorActionLoading) return;
+    setLockReason(''); // Reset reason
+    setShowLockModal(true);
+  };
+
+  const closeLockModal = () => {
+    setShowLockModal(false);
+    setLockReason('');
+  };
+
+  const handleLock = async () => {
+    if (!isModerator || !post || moderatorActionLoading) return;
+    try {
+      setModeratorActionLoading(true);
+      await lockPost(post.path, { reason: lockReason || null }); // Send reason if provided
+      await refetchPostData(); // Refetch to get updated lock status
+      closeLockModal();
+    } catch (err) {
+      console.error('Error locking post:', err);
+      alert(`Failed to lock post: ${err.message || 'Unknown error'}`);
+    } finally {
+      setModeratorActionLoading(false);
+    }
+  };
+
+  const handleUnlock = async () => {
+    if (!isModerator || !post || moderatorActionLoading) return;
+    try {
+      setModeratorActionLoading(true);
+      await unlockPost(post.path);
+      await refetchPostData(); // Refetch to get updated lock status
+    } catch (err) {
+      console.error('Error unlocking post:', err);
+      alert('Failed to unlock post.');
+    } finally {
+      setModeratorActionLoading(false);
+    }
+  };
+
+  if (loading || isLoading || (postPath && !post && !error)) { // Added condition for initial load state
     return (
       <div className="p-4 flex justify-center items-center min-h-[300px]">
         <Spinner size="lg" />
@@ -602,7 +722,9 @@ export default function PostDetailPage() {
     );
   }
 
-  const canEdit = isAuthenticated && user && post?.user?.id === user.id;
+  // Check if user owns the post
+  const isOwner = isAuthenticated && user && post?.user?.id === user.id;
+  const canEdit = isOwner; // Only owner can edit content
   const editUrl = `/c/${communityName}/post/${postPath}/edit`;
 
   return (
@@ -680,6 +802,24 @@ export default function PostDetailPage() {
                   <span className="mx-1 text-gray-400">•</span>
                   
                   <span>{formatDistanceToNow(new Date(post?.created_at || Date.now()), { addSuffix: true })}</span>
+
+                  {/* Pinned Icon */}
+                  {post?.is_pinned && (
+                    <span title="Pinned by moderator" className="ml-2 text-green-600 flex items-center">
+                      <PinIcon className="w-4 h-4 mr-1" />
+                      <span className="text-xs font-medium">Pinned</span>
+                    </span>
+                  )}
+                  {/* Locked Icon */}
+                  {post?.is_locked && (
+                     <span 
+                       title={post.locked_reason ? `Locked: ${post.locked_reason}` : "Locked by moderator"} 
+                       className="ml-2 text-yellow-600 flex items-center"
+                     >
+                      <LockClosedIcon className="w-4 h-4 mr-1" />
+                       <span className="text-xs font-medium">Locked</span>
+                    </span>
+                  )}
                 </div>
                 
                 {/* Post Content */}
@@ -728,9 +868,9 @@ export default function PostDetailPage() {
                 </div>
                 
                 {/* Post actions */}
-                <div className="flex items-center mt-2 text-xs text-gray-500">
+                <div className="flex flex-wrap items-center mt-2 text-xs text-gray-500 gap-x-3 gap-y-1">
                   {/* Comments count */}
-                  <div className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full mr-2">
+                  <div className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full cursor-pointer">
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                       <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
                     </svg>
@@ -743,9 +883,7 @@ export default function PostDetailPage() {
                       onClick={() => setShowShareMenu(!showShareMenu)}
                       className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full mr-2 text-gray-500 hover:text-red-600"
                     >
-                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                      </svg>
+                      <ShareIcon className="w-4 h-4 mr-1" />
                       <span>Share</span>
                     </button>
                     
@@ -756,10 +894,7 @@ export default function PostDetailPage() {
                           onClick={copyToClipboard}
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                            <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                          </svg>
+                          <LinkIcon className="w-4 h-4 mr-2" /> {/* Changed icon */}
                           Copy Link
                         </button>
                         <button 
@@ -805,37 +940,82 @@ export default function PostDetailPage() {
                   {/* Report button */}
                   <button 
                     onClick={handleReport}
-                    className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full mr-2 text-gray-500 hover:text-red-600"
+                    className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600"
                   >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-                    </svg>
+                    <FlagIcon className="w-4 h-4 mr-1" /> {/* Changed icon */}
                     <span>Report</span>
                   </button>
                   
-                  {/* Edit button */}
+                  {/* Edit button (Owner only) */}
                   {canEdit && (
-                    <div className="flex items-center">
-                      <Link href={editUrl} 
-                        className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full mr-2 text-gray-500 hover:text-red-600">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        <span>Edit</span>
-                      </Link>
+                    <Link href={editUrl} 
+                      className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600">
+                       <PencilIcon className="w-4 h-4 mr-1" /> {/* Changed icon */}
+                      <span>Edit</span>
+                    </Link>
+                  )}
                       
-                      {/* Delete button */}
-                      <button 
-                        onClick={handleDeletePost}
-                        className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600"
-                        disabled={loading}
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        <span>Delete</span>
-                      </button>
-                    </div>
+                  {/* Delete button (Owner or Moderator) */}
+                  {(isOwner || isModerator) && (
+                    <button 
+                      onClick={handleDeletePost}
+                      className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600"
+                      disabled={moderatorActionLoading} // Use moderator loading state
+                    >
+                       <TrashIcon className="w-4 h-4 mr-1" /> {/* Changed icon */}
+                      <span>{moderatorActionLoading ? 'Deleting...' : 'Delete'}</span>
+                    </button>
+                  )}
+
+                  {/* Moderator Actions */}
+                  {isModerator && (
+                    <>
+                      {/* Pin/Unpin */}
+                      {post?.is_pinned ? (
+                        <button 
+                          onClick={handleUnpin}
+                          className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-green-600 hover:text-green-800"
+                          disabled={moderatorActionLoading}
+                          title="Unpin Post"
+                        >
+                           <PinIcon className="w-4 h-4 mr-1" /> 
+                          <span>{moderatorActionLoading ? 'Unpinning...' : 'Unpin'}</span>
+                        </button>
+                      ) : (
+                         <button 
+                          onClick={handlePin}
+                          className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-green-600"
+                          disabled={moderatorActionLoading}
+                          title="Pin Post"
+                        >
+                          <PinIcon className="w-4 h-4 mr-1" /> 
+                          <span>{moderatorActionLoading ? 'Pinning...' : 'Pin'}</span>
+                        </button>
+                      )}
+
+                       {/* Lock/Unlock */}
+                      {post?.is_locked ? (
+                         <button 
+                          onClick={handleUnlock}
+                          className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-yellow-600 hover:text-yellow-800"
+                          disabled={moderatorActionLoading}
+                          title="Unlock Post"
+                        >
+                          <LockOpenIcon className="w-4 h-4 mr-1" />
+                          <span>{moderatorActionLoading ? 'Unlocking...' : 'Unlock'}</span>
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={openLockModal}
+                          className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-yellow-600"
+                          disabled={moderatorActionLoading}
+                           title="Lock Post"
+                       >
+                          <LockClosedIcon className="w-4 h-4 mr-1" />
+                          <span>{moderatorActionLoading ? 'Locking...' : 'Lock'}</span>
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -853,7 +1033,8 @@ export default function PostDetailPage() {
               <div className="mt-6">
                 <h3 className="text-lg font-medium mb-2">Comments</h3>
                 
-                {/* Comment form */}
+                {/* Comment form - Only show if post is not locked */}
+                {!post?.is_locked && (
                 <div className="mb-4 bg-white border border-gray-300 rounded-md p-4">
                   <textarea
                     className="w-full px-3 py-2 text-gray-700 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
@@ -882,7 +1063,16 @@ export default function PostDetailPage() {
                     </button>
                   </div>
                 </div>
+                )}
                 
+                {/* Lock Overlay for Comments */}
+                {post?.is_locked && (
+                   <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 text-sm flex items-center">
+                     <LockClosedIcon className="w-4 h-4 mr-2 flex-shrink-0" />
+                     <span>Comments on this post are locked. {post.locked_reason ? `Reason: ${post.locked_reason}` : ''}</span>
+                  </div>
+                )}
+
                 {/* Comment sorting options */}
                 <div className="flex flex-wrap items-center mb-4 border-b pb-2">
                   <div className="text-xs font-medium text-gray-500 mr-2">Sort comments by:</div>
@@ -986,6 +1176,7 @@ export default function PostDetailPage() {
                           setComments={setComments}
                           createComment={createComment}
                           level={0}
+                          isPostLocked={post?.is_locked} // Pass lock status down
                         />
                       ))}
                     </ul>
@@ -1004,15 +1195,24 @@ export default function PostDetailPage() {
               <h2 className="text-base font-semibold">About Community</h2>
             </div>
             <div className="p-4">
+               <Link href={`/c/${post?.community?.path}`}>
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-3 text-xl font-bold text-gray-700">
-                  {communityName.charAt(0).toUpperCase()}
+              <div className="w-20 h-20 rounded-full bg-white border-4 border-white shadow-md mr-4 flex-shrink-0 overflow-hidden">
+              {post?.community?.icon_image ? (
+                <img src={post?.community?.icon_image} alt={`${post?.community?.name} icon`} className="w-full h-full object-cover rounded-full" />
+              ) : (
+                <div className="w-full h-full bg-red-500 flex items-center justify-center text-white text-2xl font-bold rounded-full">
+                  {post?.community?.name ? post?.community?.name.charAt(0).toUpperCase() : 'C'}
                 </div>
+              )}
+              </div>
+                
                 <div>
                   <h3 className="font-bold text-lg">c/{communityName}</h3>
                   <p className="text-sm text-gray-500">Community page</p>
                 </div>
               </div>
+              </Link>
               
               {/* Community description */}
               {post?.community?.description && (
@@ -1037,15 +1237,10 @@ export default function PostDetailPage() {
                   <svg className="w-5 h-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
                   </svg>
-                  <span>{post?.community?.subscribers || 0} members</span>
+                  <span>{post?.community?.member_count || 0} members</span>
                 </div>
                 
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-                  </svg>
-                  <span>{post?.community?.posts_count || 0} posts in this community</span>
-                </div>
+               
               </div>
               
               <div className="mt-4 pt-4">
@@ -1191,6 +1386,51 @@ export default function PostDetailPage() {
           </div>
         </div>
       )}
+
+       {/* Lock Post Modal */}
+      {showLockModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">Lock Post</h3>
+              <button 
+                onClick={closeLockModal}
+                className="text-gray-500 hover:text-gray-700"
+                disabled={moderatorActionLoading}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-gray-700 mb-2">Optionally provide a reason for locking this post:</p>
+            <textarea
+              className="w-full px-3 py-2 text-gray-700 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent mb-4"
+              rows="3"
+              placeholder="Reason (optional)"
+              value={lockReason}
+              onChange={(e) => setLockReason(e.target.value)}
+              disabled={moderatorActionLoading}
+            ></textarea>
+            <div className="mt-4 flex justify-end space-x-2">
+              <button 
+                onClick={closeLockModal}
+                className="px-4 py-2 text-sm text-gray-700 rounded hover:bg-gray-100 border border-gray-300"
+                disabled={moderatorActionLoading}
+              >
+                Cancel
+              </button>
+               <button 
+                onClick={handleLock}
+                className={`px-4 py-2 text-sm text-white rounded ${moderatorActionLoading ? 'bg-yellow-400 cursor-not-allowed' : 'bg-yellow-600 hover:bg-yellow-700'}`}
+                disabled={moderatorActionLoading}
+              >
+                {moderatorActionLoading ? 'Locking...' : 'Lock Post'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
@@ -1206,7 +1446,8 @@ const CommentItem = ({
   user, 
   setComments, 
   createComment,
-  level = 0
+  level = 0,
+  isPostLocked // New prop: receive lock status from parent
 }) => {
   const DEFAULT_DISPLAY_LEVEL = 3; // Show comments up to this level by default
   const [showReplies, setShowReplies] = React.useState(level < DEFAULT_DISPLAY_LEVEL);
@@ -1222,6 +1463,10 @@ const CommentItem = ({
   };
   
   const totalReplyCount = countAllReplies(comment);
+
+  // Determine if comment actions should be disabled due to post lock
+  const actionsDisabled = isPostLocked || (isAuthenticated && user && comment?.user?.id !== user.id && comment.isEditing); // Disable edit/reply if locked or not owner during edit
+  const voteDisabled = !isAuthenticated; // Voting disabled only if not logged in
 
   // Handle click outside to close share menu
   React.useEffect(() => {
@@ -1255,17 +1500,25 @@ const CommentItem = ({
         <div className="flex items-center mb-2">
           {/* User avatar placeholder - wrapper div for positioning */}
           <div className="relative w-7 h-7 mr-2 flex-shrink-0">
-            <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
-              {comment?.user?.username?.charAt(0).toUpperCase() || 'U'}
-            </div>
+            {comment?.user?.avatar ? (
+              <img 
+                src={comment.user.avatar} 
+                alt={`${comment.user.username}'s avatar`}
+                className="w-7 h-7 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
+                {comment?.user?.username?.charAt(0).toUpperCase() || 'U'}
+              </div>
+            )}
             {/* Vertical thread line that aligns with avatar center */}
             {hasReplies && showReplies && (
               <div className="absolute w-[2px] bg-gray-400 left-1/2 -translate-x-1/2 top-full h-full"></div>
             )}
           </div>
-          
+          <Link href={`/user/${comment?.user?.username}`}>
           <span className="font-medium text-gray-800">{comment?.user?.username ?? '[deleted]'}</span>
-          <span className="mx-2 text-gray-400">•</span>
+          </Link><span className="mx-2 text-gray-400">•</span>
           <span className="text-xs text-gray-500">
             {formatDistanceToNow(new Date(comment?.created_at || Date.now()), { addSuffix: true })}
           </span>
@@ -1285,7 +1538,8 @@ const CommentItem = ({
                     }))
                   );
                 }} 
-                className="flex items-center px-2 py-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-red-600 text-xs mr-2"
+                className={`flex items-center px-2 py-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-red-600 text-xs mr-2 ${isPostLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isPostLocked} // Disable edit button if post is locked
               >
                 <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -1295,6 +1549,7 @@ const CommentItem = ({
               <button 
                 onClick={() => handleDeleteComment(comment.id)} 
                 className="flex items-center px-2 py-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-red-600 text-xs"
+                disabled={actionsDisabled} // Disable delete button if post is locked or not owner
               >
                 <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1382,8 +1637,8 @@ const CommentItem = ({
                   onClick={() => handleCommentVote(comment.id, 'UP')} 
                   className={`flex items-center justify-center w-6 h-6 rounded-sm hover:bg-gray-100 ${
                     comment.user_vote === 'upvote' ? 'text-red-500' : 'text-gray-400'
-                  }`}
-                  disabled={!isAuthenticated}
+                  } ${voteDisabled ? 'opacity-50 cursor-not-allowed' : ''}`} // Apply disabled style
+                  disabled={voteDisabled} // Use voteDisabled state
                   title={!isAuthenticated ? "Log in to vote" : "Upvote"}
                   aria-label="Upvote comment"
                 >
@@ -1406,8 +1661,8 @@ const CommentItem = ({
                   onClick={() => handleCommentVote(comment.id, 'DOWN')} 
                   className={`flex items-center justify-center w-6 h-6 rounded-sm hover:bg-gray-100 ${
                     comment.user_vote === 'downvote' ? 'text-blue-500' : 'text-gray-400'
-                  }`}
-                  disabled={!isAuthenticated}
+                   } ${voteDisabled ? 'opacity-50 cursor-not-allowed' : ''}`} // Apply disabled style
+                  disabled={voteDisabled} // Use voteDisabled state
                   title={!isAuthenticated ? "Log in to vote" : "Downvote"}
                   aria-label="Downvote comment"
                 >
@@ -1428,7 +1683,8 @@ const CommentItem = ({
                       }))
                     );
                   }}
-                  className="flex items-center mr-4 text-xs text-gray-500 hover:text-gray-700"
+                  className={`flex items-center mr-4 text-xs text-gray-500 hover:text-gray-700 ${actionsDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={actionsDisabled} // Disable if post locked
                 >
                   <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1618,6 +1874,7 @@ const CommentItem = ({
                     setComments={setComments}
                     createComment={createComment}
                     level={level + 1}
+                    isPostLocked={isPostLocked} // Pass lock status down
                   />
                 ))}
               </div>

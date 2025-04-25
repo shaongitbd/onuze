@@ -122,13 +122,21 @@ export default function CommunityPage() {
       {/* Hero Banner with Community Image */}
       <div className="h-48 bg-gradient-to-r from-red-700 via-red-600 to-red-500 relative overflow-hidden">
         <div className="absolute inset-0 bg-black opacity-30"></div>
-        <div className="absolute inset-0 bg-[url('https://picsum.photos/1920/300')] bg-cover bg-center mix-blend-overlay"></div>
+        {community.banner_image ? (
+          <div className="absolute inset-0 bg-cover bg-center mix-blend-overlay" style={{ backgroundImage: `url(${community.banner_image})` }}></div>
+        ) : (
+          <div className="absolute inset-0 bg-[url('https://picsum.photos/1920/300')] bg-cover bg-center mix-blend-overlay"></div>
+        )}
         <div className="container mx-auto px-4 h-full flex items-end">
           <div className="flex items-center mb-6 z-10">
             <div className="w-20 h-20 rounded-full bg-white border-4 border-white shadow-md mr-4 flex-shrink-0 overflow-hidden">
-              <div className="w-full h-full bg-red-500 flex items-center justify-center text-white text-2xl font-bold">
-                {community.name ? community.name.charAt(0).toUpperCase() : 'C'}
-              </div>
+              {community.icon_image ? (
+                <img src={community.icon_image} alt={`${community.name} icon`} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-red-500 flex items-center justify-center text-white text-2xl font-bold">
+                  {community.name ? community.name.charAt(0).toUpperCase() : 'C'}
+                </div>
+              )}
             </div>
             <div>
               <h1 className="text-3xl font-bold text-white drop-shadow-md flex items-center">

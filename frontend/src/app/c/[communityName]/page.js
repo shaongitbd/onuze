@@ -2,42 +2,39 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { getSubredditDetail, getPosts } from '../../../lib/api';
+import { getSubredditDetail, joinCommunity, leaveCommunity } from '../../../lib/api';
 import Link from 'next/link';
 import Spinner from '../../../components/Spinner';
 import { useAuth } from '../../../lib/auth';
-import PostCard from '../../../components/PostCard';
 import SortTimeControls from '../../../components/SortTimeControls';
+import InfinitePosts from '../../../components/InfinitePosts';
 
 export default function CommunityPage() {
   const { communityName } = useParams();
   const [community, setCommunity] = useState(null);
-  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { user } = useAuth();
-  const [sort, setSort] = useState('new');
-  const [time, setTime] = useState('');
+  const [sort, setSort] = useState('hot');
+  const [time, setTime] = useState('all');
+  const [isProcessingJoin, setIsProcessingJoin] = useState(false);
+  const [joinError, setJoinError] = useState(null);
 
   useEffect(() => {
     async function fetchCommunityData() {
       try {
         setLoading(true);
+        setError(null);
         const communityData = await getSubredditDetail(communityName);
         setCommunity(communityData);
-        
-        const params = {
-          communityPath: communityName,
-          sort: sort,
-        };
-        if (time) {
-          params.time = time;
-        }
-        const postsResponse = await getPosts(params);
-        setPosts(postsResponse.results || []);
       } catch (err) {
         console.error('Failed to fetch community data:', err);
-        setError('Failed to load community data. Please try again later.');
+        if (err.response && err.response.status === 404) {
+            setError('Community not found.');
+            setCommunity(null);
+        } else {
+            setError('Failed to load community data. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }
@@ -46,7 +43,55 @@ export default function CommunityPage() {
     if (communityName) {
       fetchCommunityData();
     }
-  }, [communityName, sort, time]);
+  }, [communityName]);
+
+  const showTimeFilter = sort === 'top' || sort === 'controversial';
+
+  useEffect(() => {
+    if (!showTimeFilter && time !== 'all') {
+      setTime('all');
+    }
+  }, [sort, showTimeFilter, time]);
+
+  const handleJoin = async () => {
+    if (!community || isProcessingJoin) return;
+    setIsProcessingJoin(true);
+    setJoinError(null);
+    try {
+      await joinCommunity(community.id);
+      setCommunity(prev => ({
+        ...prev,
+        is_member: true,
+        member_count: (prev.member_count || 0) + 1
+      }));
+    } catch (err) {
+      console.error("Failed to join community:", err);
+      const message = err.response?.data?.detail || 'Failed to join community. Please try again.';
+      setJoinError(message);
+    } finally {
+      setIsProcessingJoin(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!community || isProcessingJoin) return;
+    setIsProcessingJoin(true);
+    setJoinError(null);
+    try {
+      await leaveCommunity(community.id);
+      setCommunity(prev => ({
+        ...prev,
+        is_member: false,
+        member_count: Math.max(0, (prev.member_count || 1) - 1)
+      }));
+    } catch (err) {
+      console.error("Failed to leave community:", err);
+      const message = err.response?.data?.detail || 'Failed to leave community. Please try again.';
+      setJoinError(message);
+    } finally {
+      setIsProcessingJoin(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -123,7 +168,7 @@ export default function CommunityPage() {
             </div>
             {user && (
               <Link 
-                href={`/c/${communityName}/submit`}
+                href={`/submit`}
                 className="bg-red-600 hover:bg-red-700 text-white font-medium py-1.5 px-4 rounded-full text-sm shadow-sm transition-all duration-200 flex items-center"
               >
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,37 +202,16 @@ export default function CommunityPage() {
               </div>
             </div>
 
-            {/* Posts */}
-            {posts.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-                  <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-700 mb-2">No posts yet</h3>
-                <p className="text-gray-500 mb-6 max-w-md mx-auto">Be the first one to share something in this community!</p>
-                {user && (
-                  <Link 
-                    href={`/c/${communityName}/submit`}
-                    className="inline-flex items-center px-6 py-3 bg-red-600 text-white font-medium rounded-full hover:bg-red-700 transition-colors duration-200 shadow-md hover:shadow-lg"
-                  >
-                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                    </svg>
-                    Create the first post
-                  </Link>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {posts.map(post => (
-                  <div key={post.id} className="mb-4">
-                    <PostCard post={post} />
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Posts - Replaced with InfinitePosts */}
+            <InfinitePosts
+              key={`${communityName}-${sort}-${showTimeFilter ? time : 'all'}`}
+              initialParams={{
+                communityPath: communityName,
+                sort: sort,
+                ...(showTimeFilter ? { t: time } : {})
+              }}
+              emptyMessage={`Looks like there are no posts in c/${community?.name || communityName} yet${sort !== 'hot' || (showTimeFilter && time !== 'all') ? ' matching these filters' : ''}.`}
+            />
           </div>
 
           {/* Sidebar */}
@@ -205,18 +229,14 @@ export default function CommunityPage() {
               <div className="p-6">
                 <p className="text-gray-700 mb-6">{community.description || 'No description available for this community.'}</p>
                 
-                <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-200">
-                  <div className="text-center">
-                    <span className="block text-2xl font-bold text-red-600">{community.subscribers || 0}</span>
+                <div className="flex items-center justify-around mb-6 pb-6 border-b border-gray-200">
+                  <div className="text-center px-2">
+                    <span className="block text-2xl font-bold text-red-600">{community.member_count || 0}</span>
                     <span className="text-sm text-gray-500">Members</span>
                   </div>
-                  <div className="text-center">
-                    <span className="block text-2xl font-bold text-gray-700">{posts.length}</span>
-                    <span className="text-sm text-gray-500">Posts</span>
-                  </div>
-                  <div className="text-center">
+                  <div className="text-center px-2">
                     <span className="block text-2xl font-bold text-gray-700">
-                      {community.createdAt ? Math.floor((new Date() - new Date(community.createdAt)) / (1000 * 60 * 60 * 24)) : 0}
+                      {community.created_at ? Math.floor((new Date() - new Date(community.created_at)) / (1000 * 60 * 60 * 24)) : 0}
                     </span>
                     <span className="text-sm text-gray-500">Days Old</span>
                   </div>
@@ -240,9 +260,44 @@ export default function CommunityPage() {
                   </ul>
                 </div>
                 
+                {/* --- Join/Leave Button --- */}
+                {user && community && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    {isProcessingJoin ? (
+                      <button 
+                        disabled
+                        className="block w-full py-2 bg-gray-300 text-gray-500 font-medium rounded text-center cursor-not-allowed"
+                      >
+                        Processing...
+                      </button>
+                    ) : community.is_member ? (
+                      <button 
+                        onClick={handleLeave}
+                        className="block w-full py-2 bg-red-100 text-red-700 border border-red-200 font-medium rounded text-center hover:bg-red-200 hover:border-red-300 transition-colors duration-200"
+                      >
+                        Leave Community
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={handleJoin}
+                        className="block w-full py-2 bg-red-600 text-white font-medium rounded text-center hover:bg-red-700 transition-colors duration-200"
+                      >
+                        Join Community
+                      </button>
+                    )}
+                  </div>
+                )}
+                {/* Display Join/Leave Errors */} 
+                {joinError && (
+                  <div className="mt-2 text-xs text-red-600 text-center">
+                    {joinError}
+                  </div>
+                )}
+                {/* -------------------------- */}
+                
                 {user && (
                   <Link 
-                    href={`/c/${communityName}/submit`}
+                    href={`/submit`}
                     className="block w-full py-2 bg-red-600 text-white font-medium rounded text-center hover:bg-red-700 transition-colors duration-200"
                   >
                     Create Post

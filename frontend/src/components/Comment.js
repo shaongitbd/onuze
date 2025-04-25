@@ -69,7 +69,7 @@ export default function Comment({ comment, postId, postPath }) {
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center mb-1">
-            <a href={`/users/${comment.user?.username || '[deleted]'}`} className="text-sm font-medium text-gray-900 hover:underline mr-2">
+            <a href={`/user/${comment.user?.username || '[deleted]'}`} className="text-sm font-medium text-gray-900 hover:underline mr-2">
               {comment.user?.username || '[deleted]'}
             </a>
             <span className="text-xs text-gray-500">

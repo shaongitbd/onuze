@@ -1,26 +1,115 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { getUserProfile, getUserPosts } from '../../../lib/api';
+import { getUserProfile, getUserComments, getPostByPath } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import Spinner from '../../../components/Spinner';
 import { formatDistanceToNow } from 'date-fns';
+import InfinitePosts from '../../../components/InfinitePosts';
+import InfiniteUserComments from '../../../components/InfiniteUserComments';
+
+// Basic component to display a user comment preview
+const UserCommentPreview = ({ comment }) => {
+  // State to hold fetched post details
+  const [postDetails, setPostDetails] = useState({ 
+    title: comment.post_title || null, // Start with comment data if available
+    communityPath: comment.community_path || null 
+  });
+  const [loadingPost, setLoadingPost] = useState(!comment.post_title || !comment.community_path); // Only load if needed
+  const [fetchError, setFetchError] = useState(false);
+
+  const initialPostPath = comment.post_path || '';
+
+  useEffect(() => {
+    // Only fetch if we don't have the details and have a path
+    if ((!postDetails.title || !postDetails.communityPath) && initialPostPath) {
+      setLoadingPost(true);
+      setFetchError(false);
+      getPostByPath(initialPostPath)
+        .then(data => {
+          setPostDetails({ 
+            title: data?.title || '[post unavailable]', 
+            communityPath: data?.community?.path || 'unknown' 
+          });
+        })
+        .catch(err => {
+          console.error(`Error fetching post details for path ${initialPostPath}:`, err);
+          setPostDetails({ title: '[post unavailable]', communityPath: 'unknown' });
+          setFetchError(true);
+        })
+        .finally(() => {
+          setLoadingPost(false);
+        });
+    } else if (!initialPostPath) {
+        // Handle case where comment has no post_path
+        setPostDetails({ title: '[post unavailable]', communityPath: 'unknown' });
+        setLoadingPost(false);
+    }
+  }, [initialPostPath, postDetails.title, postDetails.communityPath]); // Re-run if path changes
+
+  // Use state variables for rendering
+  const displayCommunityPath = postDetails.communityPath || 'unknown';
+  const displayPostTitle = postDetails.title || '[post unavailable]';
+  const postUrl = initialPostPath ? `/c/${displayCommunityPath}/post/${initialPostPath}` : '#';
+
+  return (
+    <div className="border-b border-gray-100 pb-3 mb-3">
+      <div className="text-xs text-gray-500 mb-1">
+        <span>Commented on </span>
+        {loadingPost ? (
+          <span className="italic text-gray-400">Loading post title...</span>
+        ) : (
+          <Link href={postUrl} className="hover:underline font-medium text-gray-700">
+            {displayPostTitle} 
+          </Link>
+        )}
+        <span> in </span>
+        {loadingPost ? (
+            <span className="italic text-gray-400">c/...</span>
+        ) : (
+            <Link href={`/c/${displayCommunityPath}`} className="hover:underline font-medium text-gray-700">
+                c/{displayCommunityPath}
+            </Link>
+        )}
+        <span className="mx-1">•</span>
+        <span>{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
+      </div>
+      <div className="text-sm text-gray-800 whitespace-pre-wrap pl-2 border-l-2 border-gray-200">
+        {comment.content}
+      </div>
+      <div className="text-xs text-gray-500 mt-1 pl-2">
+         {comment.score} points
+      </div>
+    </div>
+  );
+};
 
 export default function UserProfilePage() {
   const params = useParams();
   const { username } = params;
   
-  const [profile, setProfile] = React.useState(null);
-  const [posts, setPosts] = React.useState([]);
-  const [loadingProfile, setLoadingProfile] = React.useState(true);
-  const [loadingPosts, setLoadingPosts] = React.useState(true);
-  const [error, setError] = React.useState('');
+  const [profile, setProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [error, setError] = useState('');
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('posts');
+  
+  // State for post filtering
+  const [postSortOption, setPostSortOption] = useState('new');
+  const [postTimeFilter, setPostTimeFilter] = useState('all');
+  const [showPostTimeFilter, setShowPostTimeFilter] = useState(false);
+  
+  // State for comment filtering
+  const [commentSortOption, setCommentSortOption] = useState('new');
+  const [commentTimeFilter, setCommentTimeFilter] = useState('all');
+  const [showCommentTimeFilter, setShowCommentTimeFilter] = useState(false);
 
-  React.useEffect(() => {
+  // Fetch Profile
+  useEffect(() => {
     async function fetchProfile() {
+      if (!username) return;
       try {
         setLoadingProfile(true);
         const profileData = await getUserProfile(username);
@@ -34,33 +123,8 @@ export default function UserProfilePage() {
         setLoadingProfile(false);
       }
     }
-
-    if (username) {
       fetchProfile();
-    }
   }, [username]);
-
-  React.useEffect(() => {
-    async function fetchPosts() {
-      if (!profile || !profile.id) return;
-      
-      try {
-        setLoadingPosts(true);
-        const postsData = await getUserPosts(profile.id);
-        if (postsData && postsData.results) {
-          setPosts(postsData.results);
-        } else {
-          setPosts([]);
-        }
-      } catch (err) {
-        console.error('Error fetching user posts:', err);
-      } finally {
-        setLoadingPosts(false);
-      }
-    }
-    
-    fetchPosts();
-  }, [profile]);
 
   if (loadingProfile) {
     return (
@@ -85,107 +149,201 @@ export default function UserProfilePage() {
     );
   }
 
+  const TabButton = ({ tabName, label }) => (
+    <button
+      type="button"
+      onClick={() => setActiveTab(tabName)}
+      className={`py-2 px-4 font-medium border-b-2 transition-colors duration-150 
+        ${
+          activeTab === tabName
+            ? 'border-red-500 text-red-600'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+        }`}
+    >
+      {label}
+    </button>
+  );
+
+  // Handlers for POST filter changes
+  const handlePostSortChange = (event) => {
+    const newSort = event.target.value;
+    setPostSortOption(newSort);
+    // Show time filter only for top/controversial
+    const showTime = newSort === 'top' || newSort === 'controversial';
+    setShowPostTimeFilter(showTime);
+    // Reset time filter if it's no longer shown
+    if (!showTime) {
+      setPostTimeFilter('all');
+    }
+  };
+
+  const handlePostTimeFilterChange = (event) => {
+    setPostTimeFilter(event.target.value);
+  };
+
+  // Handlers for COMMENT filter changes
+  const handleCommentSortChange = (event) => {
+    const newSort = event.target.value;
+    setCommentSortOption(newSort);
+    const showTime = newSort === 'top' || newSort === 'controversial';
+    setShowCommentTimeFilter(showTime);
+    if (!showTime) {
+      setCommentTimeFilter('all');
+    }
+  };
+
+  const handleCommentTimeFilterChange = (event) => {
+    setCommentTimeFilter(event.target.value);
+  };
+
   return (
-    <div className="p-4 max-w-3xl mx-auto">
-      {/* User Profile Card */}
-      <div className="bg-white rounded-md shadow-sm p-6 mb-6">
-        <div className="flex items-center mb-4">
-          <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xl font-bold">
-            {profile.username.charAt(0).toUpperCase()}
-          </div>
-          <div className="ml-4">
-            <h1 className="text-2xl font-bold">u/{profile.username}</h1>
-            <p className="text-gray-500">
-              Member since {new Date(profile.created_at).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-        
-        {profile.bio && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-md">
-            <h3 className="font-semibold mb-2">About</h3>
-            <p className="text-gray-700">{profile.bio}</p>
-          </div>
-        )}
-        
-        <div className="flex items-center justify-between">
-          <div className="flex space-x-4">
-            <div className="text-center">
-              <div className="font-semibold text-lg">{posts.length}</div>
-              <div className="text-gray-500 text-sm">Posts</div>
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Profile Header Card - Redesigned */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6 border border-gray-200">
+        <div className="p-6">
+          <div className="flex items-center space-x-4 mb-4">
+            {/* Avatar */}
+            <div className="flex-shrink-0">
+              <img src={profile.avatar} alt="User Avatar" className="w-16 h-16 rounded-full border-2 border-gray-200" />
             </div>
-            <div className="text-center">
-              <div className="font-semibold text-lg">{profile.karma || 0}</div>
-              <div className="text-gray-500 text-sm">Karma</div>
+            
+            {/* Username and Join Date */}
+            <div className="flex-grow">
+              <h1 className="text-xl font-bold text-gray-800">{profile.username}</h1>
+              <p className="text-sm text-gray-500">
+                Joined {new Date(profile.date_joined).toLocaleDateString()}
+              </p>
             </div>
+            
+            {/* Edit Button */} 
+            {user && user.username === profile.username && (
+              <div className="flex-shrink-0">
+                <Link 
+                  href="/settings" 
+                  className="px-3 py-1.5 bg-gray-100 rounded-md text-gray-700 hover:bg-gray-200 text-xs font-medium"
+                >
+                  Edit Profile
+                </Link>
+              </div>
+            )}
           </div>
           
-          {user && user.username === profile.username && (
-            <Link 
-              href="/settings" 
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition"
-            >
-              Edit Profile
-            </Link>
+          {/* Bio */} 
+          {profile.bio && (
+            <p className="text-gray-700 text-sm mb-4">{profile.bio}</p>
           )}
+          
+          {/* Stats Section */}
+          <div className="flex space-x-6 text-sm border-t border-gray-100 pt-3">
+            <div>
+              <span className="font-semibold text-red-600">{profile.karma || 0}</span>
+              <span className="ml-1 text-gray-500">Karma</span>
+            </div>
+            <div>
+              <span className="font-semibold text-gray-700">{profile.post_count || 0}</span>
+              <span className="ml-1 text-gray-500">Posts</span>
+            </div>
+          </div>
         </div>
       </div>
       
-      {/* User Posts */}
-      <div className="bg-white rounded-md shadow-sm p-6">
-        <h2 className="text-xl font-semibold mb-4">
-          Posts by u/{profile.username}
-        </h2>
+      {/* Tabs Navigation */}
+      <div className="border-b border-gray-200 mb-6">
+        <div className="flex space-x-4">
+          <TabButton tabName="posts" label="Posts" />
+          <TabButton tabName="comments" label="Comments" />
+        </div>
+      </div>
         
-        {loadingPosts ? (
-          <div className="flex justify-center py-8">
-             <Spinner />
-          </div>
-        ) : posts.length === 0 ? (
-          <p className="text-gray-500">This user hasn't posted anything yet.</p>
-        ) : (
-          <ul className="space-y-4">
-            {posts.map(post => (
-              <li key={post.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-                <Link 
-                  href={`/r/${post.community.name}/post/${post.id}`}
-                  className="block hover:bg-gray-50 p-2 -mx-2 rounded-md transition"
+      {/* Tab Content Area */}
+      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 min-h-[200px]">
+        {activeTab === 'posts' && (
+          <div> 
+            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold">Posts</h2>
+              {/* Post Filter Controls */}
+              <div className="flex items-center space-x-2">
+                <select 
+                  value={postSortOption}
+                  onChange={handlePostSortChange}
+                  className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
                 >
-                  <div className="flex items-center mb-2">
-                    <Link href={`/r/${post.community.name}`} className="font-medium text-indigo-600 hover:underline">
-                      r/{post.community.name}
-                    </Link>
-                    <span className="mx-2 text-gray-400">•</span>
-                    <span className="text-sm text-gray-500">
-                      {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                    </span>
+                  <option value="new">New</option>
+                  <option value="hot">Hot</option>
+                  <option value="top">Top</option>
+                </select>
+                {showPostTimeFilter && (
+                  <select 
+                    value={postTimeFilter}
+                    onChange={handlePostTimeFilterChange}
+                    className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="hour">Past Hour</option>
+                    <option value="day">Past 24 Hours</option>
+                    <option value="week">Past Week</option>
+                    <option value="month">Past Month</option>
+                    <option value="year">Past Year</option>
+                    <option value="all">All Time</option>
+                  </select>
+                )}
+              </div>
                   </div>
                   
-                  <h3 className="text-lg font-medium">{post.title}</h3>
-                  
-                  {post.content && (
-                    <p className="text-gray-600 mt-1 line-clamp-2">{post.content}</p>
+            {/* Post List Area - Use InfinitePosts instead of static list */}
+            <InfinitePosts 
+              initialParams={{
+                username,
+                sort: postSortOption,
+                ...(showPostTimeFilter ? { t: postTimeFilter } : {})
+              }} 
+              emptyMessage={`u/${profile?.username || 'User'} hasn't posted anything yet${postSortOption !== 'new' || postTimeFilter !== 'all' ? ' matching these filters' : ''}.`}
+            />
+          </div>
                   )}
                   
-                  <div className="flex items-center mt-2 text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
-                      </svg>
-                      {post.score} votes
-                    </div>
-                    <span className="mx-2">•</span>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                      </svg>
-                      {post.comment_count || 0} comments
+        {activeTab === 'comments' && (
+          <div>
+            {/* Comment Filters */}
+            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold">Comments</h2>
+              <div className="flex items-center space-x-2">
+                <select 
+                  value={commentSortOption}
+                  onChange={handleCommentSortChange}
+                  className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                >
+                  <option value="new">New</option>
+                  <option value="top">Top</option>
+                  <option value="hot">Hot</option>
+                </select>
+                {showCommentTimeFilter && (
+                  <select 
+                    value={commentTimeFilter}
+                    onChange={handleCommentTimeFilterChange}
+                    className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="hour">Past Hour</option>
+                    <option value="day">Past 24 Hours</option>
+                    <option value="week">Past Week</option>
+                    <option value="month">Past Month</option>
+                    <option value="year">Past Year</option>
+                    <option value="all">All Time</option>
+                  </select>
+                )}
                     </div>
                   </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+            
+            {/* Comment List Area */}
+            <InfiniteUserComments 
+              username={username}
+              initialParams={{
+                sort: commentSortOption,
+                ...(showCommentTimeFilter ? { t: commentTimeFilter } : {})
+              }}
+              commentComponent={UserCommentPreview}
+              emptyMessage={`u/${profile?.username || 'User'} hasn't commented anything yet${commentSortOption !== 'new' || commentTimeFilter !== 'all' ? ' matching these filters' : ''}.`}
+            />
+          </div>
         )}
       </div>
     </div>

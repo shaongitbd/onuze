@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Spinner from './Spinner'; // Assuming Spinner component exists
+import NotificationBadge from './NotificationBadge';
 
 export default function Navbar() {
     const { user, logout, loading, isAuthenticated } = useAuth();
@@ -77,6 +78,9 @@ export default function Navbar() {
                                 <Link href="/submit" className="mr-4 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                                     Create Post
                                 </Link>
+                                
+                                {/* Notification Badge */}
+                                <NotificationBadge />
                                 
                                 {/* User menu */}
                                 <div className="relative ml-3">

@@ -226,7 +226,7 @@ export default function CommunityDetailPage({ params }) {
               <ul className="text-sm space-y-1">
                 {community.moderators.map((mod, index) => (
                   <li key={mod.id || index}>
-                    <Link href={`/users/${mod.user.username}`} className="text-indigo-600 hover:underline">
+                    <Link href={`/user/${mod.user.username}`} className="text-indigo-600 hover:underline">
                       u/{mod.user.username}
                     </Link>
                   </li>

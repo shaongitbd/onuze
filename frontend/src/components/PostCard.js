@@ -46,24 +46,8 @@ export default function PostCard({ post }) {
                 };
             });
 
-            // Call the API
-            const token = localStorage.getItem('access_token');
-            const response = await fetch(`${API_BASE_URL}/posts/${currentPost.id}/votes/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `JWT ${token}`
-                },
-                body: JSON.stringify({ vote_type: voteDirection === 'UP' ? 'upvote' : 'downvote' })
-            });
-
-            if (response.ok) {
-                // Optional: Refetch post data after successful vote for consistency
-                // const updatedPostData = await getPostById(currentPost.id); // Requires importing getPostById
-                // setCurrentPost(updatedPostData);
-            } else {
-                console.error('Error voting on post:', response.statusText);
-            }
+            // Call the API function
+            await action(currentPost.path);
 
         } catch (err) {
             console.error(`Error ${voteDirection === 'UP' ? 'upvoting' : 'downvoting'} post:`, err);
@@ -74,6 +58,14 @@ export default function PostCard({ post }) {
     };
 
     if (!currentPost) return null;
+
+    // Check if post has media using the new `media_display` array
+    const hasMedia = currentPost.media_display && currentPost.media_display.length > 0;
+    // Get first media item for card preview
+    const firstMedia = hasMedia ? currentPost.media_display[0] : null;
+    // Determine media type from the first item
+    const isImage = firstMedia && firstMedia.media_type === 'image';
+    const isVideo = firstMedia && firstMedia.media_type === 'video';
 
     return (
         <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200 hover:border-red-200 transition-colors">
@@ -124,12 +116,12 @@ export default function PostCard({ post }) {
                     {/* Post metadata */}
                     <div className="flex items-center text-xs text-gray-500 mb-2">
                         {/* Community icon */}
-                        <div className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center mr-1 text-xs font-bold">
+                        <div className="w-5 h-5 rounded-full bg-gray-700 text-white flex items-center justify-center mr-1 text-xs font-bold">
                             {currentPost.community?.name?.charAt(0).toUpperCase() || 'C'}
                         </div>
                         
                         {/* Community link */}
-                        <Link href={`/c/${communityPath}`} className="font-medium text-red-600 hover:underline mr-2">
+                        <Link href={`/c/${communityPath}`} className="font-medium text-gray-800 hover:underline mr-2">
                             c/{currentPost.community?.name || 'unknown'}
                         </Link>
                         
@@ -138,7 +130,7 @@ export default function PostCard({ post }) {
                         <span>Posted by</span>
                         
                         {/* User link */}
-                        <Link href={`/users/${currentPost.user?.username || '[deleted]'}`} className="ml-1 hover:underline">
+                        <Link href={`/user/${currentPost.user?.username || '[deleted]'}`} className="ml-1 hover:underline">
                             u/{currentPost.user?.username || '[deleted]'}
                         </Link>
                         
@@ -147,17 +139,56 @@ export default function PostCard({ post }) {
                         <span>{formatDistanceToNow(new Date(currentPost.created_at || Date.now()), { addSuffix: true })}</span>
                     </div>
                     
-                    {/* Post title and content */}
+                    {/* Post title */}
                     <Link href={`/c/${communityPath}/post/${currentPost.path}`} className="block">
                         <h2 className="text-lg font-semibold mb-2 hover:text-red-600 transition-colors">
                             {currentPost.title}
                         </h2>
-                        
-                        {currentPost.content && (
-                            <p className="text-sm text-gray-700 line-clamp-3 mb-3">
+                    </Link>
+                    
+                    {/* Media Content or Text Content */}
+                    <Link href={`/c/${communityPath}/post/${currentPost.path}`} className="block mb-3">
+                        {hasMedia && firstMedia ? (
+                            <div className="relative overflow-hidden rounded-md">
+                                {isImage ? (
+                                    <div className="flex justify-start">
+                                        <img 
+                                            src={firstMedia.media_url} 
+                                            alt={currentPost.title}
+                                            className="max-h-96 w-auto rounded-md object-contain"
+                                        />
+                                    </div>
+                                ) : isVideo ? (
+                                    <div className="flex justify-start">
+                                        <video 
+                                            controls
+                                            poster={firstMedia.thumbnail_url || undefined}
+                                            className="max-h-96 w-auto rounded-md bg-black object-contain"
+                                        >
+                                            <source src={firstMedia.media_url} type={`video/${firstMedia.media_url?.split('.').pop() || 'mp4'}`} />
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-center p-4 bg-gray-100 rounded-md">
+                                        <svg className="w-6 h-6 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0v12h8V4H6z" clipRule="evenodd" />
+                                        </svg>
+                                        <span className="text-sm font-medium text-gray-500">View attachment</span>
+                                    </div>
+                                )}
+                                
+                                {hasMedia && currentPost.media_display.length > 1 && (
+                                    <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-md">
+                                        +{currentPost.media_display.length - 1} more
+                                    </div>
+                                )}
+                            </div>
+                        ) : currentPost.content ? (
+                            <p className="text-sm text-gray-700 line-clamp-3">
                                 {currentPost.content}
                             </p>
-                        )}
+                        ) : null}
                     </Link>
                     
                     {/* Post actions */}

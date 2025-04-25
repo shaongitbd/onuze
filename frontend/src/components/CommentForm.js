@@ -42,9 +42,9 @@ export default function CommentForm({ postId, parentId, postPath, onCommentAdded
       };
       
       console.log('Submitting comment:', payload);
-      console.log('API endpoint:', `${API_BASE_URL}/posts/${postId}/comments/`);
+      console.log('API endpoint:', `${API_BASE_URL}/comments/`);
       
-      const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments/`, {
+      const response = await fetch(`${API_BASE_URL}/comments/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

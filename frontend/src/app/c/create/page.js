@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { uploadImage } from '@/lib/api';
+import fetchAPI, { uploadImage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { getCookie } from '@/lib/utils';
 
@@ -69,26 +69,18 @@ function CreateCommunityPage() {
             };
 
             // Get JWT token (first try cookie, then localStorage)
-            const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
-            const token = getCookie('access_token') || localStorage.getItem('access_token');
-            
-            if (!token) {
-                throw new Error('Authentication token not found. Please log in again.');
-            }
-
+          
+        
             // Create the community
-            const response = await fetch(`${API_BASE_URL}/communities/`, {
+            const response = await fetchAPI(`/communities/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `JWT ${token}`
-                },
+           
                 body: JSON.stringify(communityData)
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.detail || `Failed to create community: ${response.status}`);
+                throw new Error( `Failed to create community: ${response.status}`);
             }
 
             const newCommunity = await response.json();

@@ -7,13 +7,15 @@ import {
   getPostByPath, getComments, createComment, deletePost, deleteComment, 
   upvotePost, downvotePost, upvoteComment, downvoteComment, updateComment,
   joinCommunity, leaveCommunity,
-  getCommunityDetails, lockPost, unlockPost, pinPost, unpinPost
+  getCommunityDetails, lockPost, unlockPost, pinPost, unpinPost,
+  banUser, unbanUser, checkBanStatus
 } from '../../../../../lib/api';
 import { useAuth } from '../../../../../lib/auth';
 import Spinner from '../../../../../components/Spinner';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { LockClosedIcon, LockOpenIcon, MapPinIcon as PinIcon, TrashIcon, PencilIcon, FlagIcon, ShareIcon, LinkIcon } from '@heroicons/react/24/solid'; // Changed PinIcon to MapPinIcon
+import BanUserModal from '../../../../../components/BanUserModal'; // Import the new modal
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -49,6 +51,13 @@ export default function PostDetailPage() {
   const [showLockModal, setShowLockModal] = useState(false);
   const [lockReason, setLockReason] = useState('');
   const [moderatorActionLoading, setModeratorActionLoading] = useState(false);
+  // New state for ban status
+  const [isUserBanned, setIsUserBanned] = useState(false);
+  const [banStatusLoading, setBanStatusLoading] = useState(false);
+  // State for Ban Modal
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [banTargetUser, setBanTargetUser] = useState(null);
+  const [banLoading, setBanLoading] = useState(false);
 
   // Refetch post data helper
   const refetchPostData = async () => {
@@ -79,10 +88,26 @@ export default function PostDetailPage() {
             try {
               const communityData = await getCommunityDetails(postData.community.path);
               setCommunityDetails(communityData);
+
+              if ( postData.user?.username) {
+                setBanStatusLoading(true);
+                try {
+                  const banStatus = await checkBanStatus(postData.community.path, postData.user.username);
+                  console.log('banStatus: ', banStatus);
+                  setIsUserBanned(banStatus.is_banned);
+                } catch (err) {
+                  console.error('Error checking ban status:', err);
+                } finally {
+                  setBanStatusLoading(false);
+                }
+              }
               // Check if the current user is a moderator
               if (user && communityData?.moderators) {
                 const isMod = communityData.moderators.some(mod => mod.user_id === user.id);
                 setIsModerator(isMod);
+                
+                // If we have the post author and we're a moderator, check if they're banned
+               
               } else {
                 setIsModerator(false);
               }
@@ -699,6 +724,60 @@ export default function PostDetailPage() {
     }
   };
 
+  // Handle banning a user - now opens the modal
+  const handleBanUser = async () => {
+    if (!isModerator || !post?.user?.username || banStatusLoading || moderatorActionLoading) {
+      return;
+    }
+    setBanTargetUser(post.user.username);
+    setShowBanModal(true);
+  };
+
+  // Function to be called by the modal on confirmation
+  const confirmBanUser = async (reason, durationDays) => {
+    try {
+      if (!banTargetUser || !post?.community?.path) {
+        console.error('Missing username or community path');
+        return;
+      }
+      setBanLoading(true);
+      
+      await banUser(post.community.path, banTargetUser, { reason, duration_days: durationDays });
+      
+      // If the banned user is the post author, update their status locally
+      if (banTargetUser === post?.user?.username) {
+        setIsUserBanned(true);
+      }
+      
+      alert(`User u/${banTargetUser} has been banned from c/${post.community.name}.`);
+      setShowBanModal(false);
+      setBanTargetUser(null);
+    } catch (error) {
+      console.error('Error banning user:', error);
+      alert(`Failed to ban user: ${error.message || 'Unknown error'}`);
+      // Optionally keep the modal open or show error within modal
+    } finally {
+      setBanLoading(false);
+    }
+  };
+
+  const handleUnbanUser = async () => {
+    try {
+      if (!post?.user?.username || !post?.community?.path) {
+        console.error('Missing username or community path');
+        return;
+      }
+      
+      await unbanUser(post.community.path, post.user.username);
+      setIsUserBanned(false);
+      // Success notification or UI update
+      alert(`User ${post.user.username} has been unbanned from ${post.community.name}`);
+    } catch (error) {
+      console.error('Error unbanning user:', error);
+      alert(`Failed to unban user: ${error.message}`);
+    }
+  };
+
   if (loading || isLoading || (postPath && !post && !error)) { // Added condition for initial load state
     return (
       <div className="p-4 flex justify-center items-center min-h-[300px]">
@@ -798,6 +877,11 @@ export default function PostDetailPage() {
                   <Link href={`/users/${post?.user?.username || '[deleted]'}`} className="ml-1 hover:underline">
                     u/{post?.user?.username || '[deleted]'}
                   </Link>
+                  {isUserBanned ? (
+                    <span className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-md">
+                      Banned
+                    </span>
+                  ) : null}
                   
                   <span className="mx-1 text-gray-400">•</span>
                   
@@ -1015,6 +1099,37 @@ export default function PostDetailPage() {
                           <span>{moderatorActionLoading ? 'Locking...' : 'Lock'}</span>
                         </button>
                       )}
+                      
+                      {/* Ban/Unban Post Author */}
+                      {post?.user && post.user.username && post.user.username !== user?.username && (
+                        <>
+                          {isUserBanned ? (
+                            <button 
+                              onClick={handleUnbanUser}
+                              className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-green-600 hover:text-green-800"
+                              disabled={banStatusLoading || moderatorActionLoading}
+                              title="Unban User"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                              <span>{banStatusLoading ? 'Unbanning...' : 'Unban'}</span>
+                      </button>
+                          ) : (
+                            <button 
+                              onClick={handleBanUser}
+                              className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600"
+                              disabled={banStatusLoading || moderatorActionLoading}
+                              title="Ban User"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
+                              </svg>
+                              <span>{banStatusLoading ? 'Banning...' : 'Ban'}</span>
+                            </button>
+                          )}
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -1174,7 +1289,8 @@ export default function PostDetailPage() {
                       setComments={setComments}
                       createComment={createComment}
                       level={0}
-                          isPostLocked={post?.is_locked} // Pass lock status down
+                      isPostLocked={post?.is_locked} // Pass lock status down
+                      isModerator={isModerator} // Pass moderator status down
                     />
                   ))}
                 </ul>
@@ -1429,6 +1545,18 @@ export default function PostDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Ban User Modal */}
+      <BanUserModal
+        isOpen={showBanModal}
+        onClose={() => {
+          setShowBanModal(false);
+          setBanTargetUser(null);
+        }}
+        onConfirmBan={confirmBanUser}
+        username={banTargetUser}
+        isLoading={banLoading}
+      />
     </div>
   );
 } 
@@ -1445,13 +1573,28 @@ const CommentItem = ({
   setComments, 
   createComment,
   level = 0,
-  isPostLocked // New prop: receive lock status from parent
+  isPostLocked,
+  isModerator
 }) => {
   const DEFAULT_DISPLAY_LEVEL = 3; // Show comments up to this level by default
-  const [showReplies, setShowReplies] = React.useState(level < DEFAULT_DISPLAY_LEVEL);
-  const [showShareOptions, setShowShareOptions] = React.useState(false);
+  const [showOptions, setShowOptions] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(comment.content);
+  const [showReplyForm, setShowReplyForm] = useState(false);
+  const [replyContent, setReplyContent] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [showReplies, setShowReplies] = useState(level < DEFAULT_DISPLAY_LEVEL);
+  const [commentBanStatus, setCommentBanStatus] = useState({});
+  const [banStatusLoading, setBanStatusLoading] = useState(false);
+  const optionsRef = useRef(null);
+
   const hasReplies = comment.replies && comment.replies.length > 0;
   const shareOptionsRef = React.useRef(null);
+  const router = useRouter();
+  
+  // State for banned status
+  const [isUserBanned, setIsUserBanned] = React.useState(comment?.user?.is_banned || false);
+  const [banLoading, setBanLoading] = React.useState(false);
   
   // Calculate total number of all nested replies
   const countAllReplies = (comment) => {
@@ -1470,7 +1613,7 @@ const CommentItem = ({
   React.useEffect(() => {
     function handleClickOutside(event) {
       if (shareOptionsRef.current && !shareOptionsRef.current.contains(event.target)) {
-        setShowShareOptions(false);
+        setShowOptions(false);
       }
     }
     
@@ -1485,10 +1628,68 @@ const CommentItem = ({
     const url = `${window.location.href.split('#')[0]}#comment-${comment.id}`;
     navigator.clipboard.writeText(url).then(() => {
       alert('Comment link copied to clipboard!');
-      setShowShareOptions(false);
+      setShowOptions(false);
     }).catch(err => {
       console.error('Could not copy text: ', err);
     });
+  };
+  
+  // Handle banning a comment author
+  const handleBanUser = async () => {
+    try {
+      if (!comment?.user?.username || !post?.community?.path) {
+        console.error('Missing username or community path');
+        return;
+      }
+      console.log('banning user: ', comment.user.username, post.community.path);
+      await banUser(post.community.path, comment.user.username);
+      setCommentBanStatus(prev => ({ ...prev, [comment.id]: true }));
+      setShowOptions(false);
+      // Success notification or UI update
+      alert(`User ${comment.user.username} has been banned from ${post.community.name}`);
+    } catch (error) {
+      console.error('Error banning user:', error);
+      alert(`Failed to ban user: ${error.message}`);
+    }
+  };
+
+  // Handle unbanning a comment author
+  const handleUnbanUser = async () => {
+    try {
+      if (!comment?.user?.username || !post?.community?.path) {
+        console.error('Missing username or community path');
+        return;
+      }
+      
+      await unbanUser(post.community.path, comment.user.username);
+      setCommentBanStatus(prev => ({ ...prev, [comment.id]: false }));
+      setShowOptions(false);
+      // Success notification or UI update
+      alert(`User ${comment.user.username} has been unbanned from ${post.community.name}`);
+    } catch (error) {
+      console.error('Error unbanning user:', error);
+      alert(`Failed to unban user: ${error.message}`);
+    }
+  };
+  
+  // Check ban status when component mounts
+  useEffect(() => {
+    if ( comment?.user?.username && post?.community?.path) {
+      checkBanStatusForComment();
+    }
+  }, [isModerator, comment?.user?.username, post?.community?.path]);
+  
+  const checkBanStatusForComment = async () => {
+    
+    try {
+      setBanStatusLoading(true);
+      const banStatus = await checkBanStatus(post.community.path, comment.user.username);
+      setCommentBanStatus(prev => ({ ...prev, [comment.id]: banStatus.is_banned }));
+    } catch (err) {
+      console.error('Error checking comment author ban status:', err);
+    } finally {
+      setBanStatusLoading(false);
+    }
   };
   
   return (
@@ -1498,9 +1699,17 @@ const CommentItem = ({
         <div className="flex items-center mb-2">
           {/* User avatar placeholder - wrapper div for positioning */}
           <div className="relative w-7 h-7 mr-2 flex-shrink-0">
+            {comment?.user?.avatar ? (
+              <img 
+                src={comment.user.avatar} 
+                alt={`${comment.user.username}'s avatar`}
+                className="w-7 h-7 rounded-full object-cover"
+              />
+            ) : (
             <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
               {comment?.user?.username?.charAt(0).toUpperCase() || 'U'}
             </div>
+            )}
             {/* Vertical thread line that aligns with avatar center */}
             {hasReplies && showReplies && (
               <div className="absolute w-[2px] bg-gray-400 left-1/2 -translate-x-1/2 top-full h-full"></div>
@@ -1508,11 +1717,48 @@ const CommentItem = ({
           </div>
           
           <span className="font-medium text-gray-800">{comment?.user?.username ?? '[deleted]'}</span>
+          
+          {/* Show banned indicator if user is banned */}
+          {commentBanStatus[comment.id] && (
+            <span className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-md">
+              Banned
+            </span>
+          )}
+          
           <span className="mx-2 text-gray-400">•</span>
           <span className="text-xs text-gray-500">
             {formatDistanceToNow(new Date(comment?.created_at || Date.now()), { addSuffix: true })}
           </span>
           <div className="flex-grow"></div>
+          
+          {/* Moderator Ban/Unban Controls */}
+          {isModerator && isAuthenticated && comment?.user?.id !== user?.id && comment?.user?.username && (
+            <div className="mr-2">
+              {commentBanStatus[comment.id] ? (
+                <button 
+                  onClick={handleUnbanUser}
+                  disabled={banStatusLoading}
+                  className="flex items-center px-2 py-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-blue-600 text-xs"
+                >
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Unban
+                </button>
+              ) : (
+                <button 
+                  onClick={handleBanUser}
+                  disabled={banStatusLoading}
+                  className="flex items-center px-2 py-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-red-600 text-xs"
+                >
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                  Ban
+                </button>
+              )}
+            </div>
+          )}
           
           {/* Edit/Delete Buttons */}
           {isAuthenticated && user && comment?.user?.id === user.id && (
@@ -1686,7 +1932,7 @@ const CommentItem = ({
               {/* Share Comment Button */}
               <div className="relative" ref={shareOptionsRef}>
                 <button
-                  onClick={() => setShowShareOptions(!showShareOptions)}
+                  onClick={() => setShowOptions(!showOptions)}
                   className="flex items-center mr-4 text-xs text-gray-500 hover:text-gray-700"
                 >
                   <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -1696,7 +1942,7 @@ const CommentItem = ({
                 </button>
                 
                 {/* Share Options Menu */}
-                {showShareOptions && (
+                {showOptions && (
                   <div className="absolute left-0 mt-2 w-36 bg-white rounded-md shadow-lg overflow-hidden z-20">
                     <button 
                       onClick={copyCommentLinkToClipboard}
@@ -1708,6 +1954,34 @@ const CommentItem = ({
                       </svg>
                       Copy Link
                     </button>
+                    
+                    {/* Add ban/unban options in the dropdown menu for moderators */}
+                    {isModerator && comment.user && comment.user.username !== user?.username && (
+                      <>
+                        <div className="border-t border-gray-100"></div>
+                        {commentBanStatus[comment.id] ? (
+                          <button 
+                            onClick={handleUnbanUser}
+                            className="flex items-center w-full px-4 py-2 text-sm text-green-600 hover:bg-gray-100"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Unban User
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={handleBanUser}
+                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
+                            </svg>
+                            Ban User
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -1865,6 +2139,7 @@ const CommentItem = ({
                     createComment={createComment}
                     level={level + 1}
                     isPostLocked={isPostLocked} // Pass lock status down
+                    isModerator={isModerator} // Pass moderator status down
                   />
                 ))}
               </div>

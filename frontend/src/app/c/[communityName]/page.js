@@ -33,7 +33,7 @@ export default function CommunityPage() {
             setError('Community not found.');
             setCommunity(null);
         } else {
-            setError('Failed to load community data. Please try again later.');
+        setError('Failed to load community data. Please try again later.');
         }
       } finally {
         setLoading(false);
@@ -125,7 +125,7 @@ export default function CommunityPage() {
         {community.banner_image ? (
           <div className="absolute inset-0 bg-cover bg-center mix-blend-overlay" style={{ backgroundImage: `url(${community.banner_image})` }}></div>
         ) : (
-          <div className="absolute inset-0 bg-[url('https://picsum.photos/1920/300')] bg-cover bg-center mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-[url('https://picsum.photos/1920/300')] bg-cover bg-center mix-blend-overlay"></div>
         )}
         <div className="container mx-auto px-4 h-full flex items-end">
           <div className="flex items-center mb-6 z-10">
@@ -133,9 +133,9 @@ export default function CommunityPage() {
               {community.icon_image ? (
                 <img src={community.icon_image} alt={`${community.name} icon`} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-red-500 flex items-center justify-center text-white text-2xl font-bold">
-                  {community.name ? community.name.charAt(0).toUpperCase() : 'C'}
-                </div>
+              <div className="w-full h-full bg-red-500 flex items-center justify-center text-white text-2xl font-bold">
+                {community.name ? community.name.charAt(0).toUpperCase() : 'C'}
+              </div>
               )}
             </div>
             <div>

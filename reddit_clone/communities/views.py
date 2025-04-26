@@ -269,6 +269,125 @@ class CommunityViewSet(viewsets.ModelViewSet):
         serializer = CommunitySettingSerializer(settings_qs, many=True)
         return Response(serializer.data)
     
+    @action(detail=True, methods=['post'], url_path='unban/(?P<username>[^/.]+)')
+    def unban_by_username(self, request, pk=None, username=None):
+        """
+        Unban a user from a community by their username.
+        This provides a simpler API endpoint: /communities/{community_id}/unban/{username}/
+        """
+        community = self.get_object()
+        
+        # Check if the requester is a moderator
+        if not CommunityModerator.objects.filter(
+            community=community, user=request.user).exists() and not request.user.is_staff:
+            return Response({'detail': 'Only moderators can unban members.'},
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'},
+                           status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            member = CommunityMember.objects.get(community=community, user=user)
+        except CommunityMember.DoesNotExist:
+            return Response({'detail': 'This user is not a member of this community.'},
+                           status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if member is banned
+        if not member.is_banned:
+            return Response({'detail': 'This member is not banned.'},
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Unban the member
+        member.unban()
+        
+        # Send notification to the unbanned user
+        from notifications.models import Notification
+        Notification.send_mod_action_notification(
+            user=member.user,
+            community=member.community,
+            action=f"Your ban from r/{member.community.name} has been lifted",
+            admin_user=request.user,
+            link_url=f"/c/{member.community.path}"
+        )
+        
+        # Log member unban
+        AuditLog.log(
+            action='community_member_unban',
+            entity_type='community_member',
+            entity_id=member.id,
+            user=request.user,
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            details={
+                'community_id': str(member.community.id),
+                'community_name': member.community.name,
+                'user_id': str(member.user.id),
+                'username': member.user.username
+            }
+        )
+        
+        return Response({'detail': f'User {username} has been unbanned from {community.name}.'})
+    
+    @action(detail=True, methods=['get'])
+    def banned_users(self, request, pk=None):
+        """
+        List all banned users in a community.
+        Accessible via: /communities/{community_id}/banned_users/
+        """
+        community = self.get_object()
+        
+        # Check if the requester is a moderator or admin
+        is_moderator = CommunityModerator.objects.filter(
+            community=community, user=request.user).exists()
+        
+        if not is_moderator and not request.user.is_staff:
+            return Response({'detail': 'Only moderators can view banned users list.'},
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        banned_members = CommunityMember.objects.filter(
+            community=community, 
+            is_banned=True
+        )
+        
+        serializer = CommunityMemberSerializer(banned_members, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def check_ban_status(self, request, pk=None):
+        """
+        Check if the authenticated user is banned in the community.
+        Accessible via: /communities/{community_id}/check_ban_status/
+        """
+        community = self.get_object()
+        user = request.user
+        
+        if not user.is_authenticated:
+            return Response({'detail': 'Authentication required.'},
+                          status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            member = CommunityMember.objects.get(community=community, user=user)
+            is_banned = member.is_banned
+            ban_reason = member.ban_reason if is_banned else None
+            banned_until = member.banned_until if is_banned else None
+            
+            return Response({
+                'is_banned': is_banned,
+                'ban_reason': ban_reason,
+                'banned_until': banned_until,
+            })
+        except CommunityMember.DoesNotExist:
+            # User is not a member
+            return Response({
+                'is_banned': False,
+                'detail': 'User is not a member of this community'
+            })
+    
     def get_client_ip(self, request):
         """Get client IP address from request."""
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -446,6 +565,66 @@ class CommunityMemberViewSet(viewsets.ModelViewSet):
         # Check if the requester is a moderator
         if not CommunityModerator.objects.filter(
             community=member.community, user=request.user).exists() and not request.user.is_staff:
+            return Response({'detail': 'Only moderators can unban members.'},
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        # Check if member is banned
+        if not member.is_banned:
+            return Response({'detail': 'This member is not banned.'},
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Unban the member
+        member.unban()
+        
+        # Send notification to the unbanned user
+        from notifications.models import Notification
+        Notification.send_mod_action_notification(
+            user=member.user,
+            community=member.community,
+            action=f"Your ban from r/{member.community.name} has been lifted",
+            admin_user=request.user,
+            link_url=f"/c/{member.community.path}"
+        )
+        
+        # Log member unban
+        AuditLog.log(
+            action='community_member_unban',
+            entity_type='community_member',
+            entity_id=member.id,
+            user=request.user,
+            ip_address=self.get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            details={
+                'community_id': str(member.community.id),
+                'community_name': member.community.name,
+                'user_id': str(member.user.id),
+                'username': member.user.username
+            }
+        )
+        
+        return Response({'detail': 'Member unbanned successfully.'})
+    
+    @action(detail=False, methods=['post'], url_path='unban-user')
+    def unban_user(self, request):
+        """
+        API endpoint to unban a user directly using community_id and user_id.
+        """
+        community_id = request.data.get('community_id')
+        user_id = request.data.get('user_id')
+        
+        if not community_id or not user_id:
+            return Response({'detail': 'Both community_id and user_id are required.'},
+                           status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            member = CommunityMember.objects.get(community_id=community_id, user_id=user_id)
+        except CommunityMember.DoesNotExist:
+            return Response({'detail': 'Member not found.'},
+                           status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if the requester is a moderator
+        if not CommunityModerator.objects.filter(
+            community_id=community_id, user=request.user).exists() and not request.user.is_staff:
             return Response({'detail': 'Only moderators can unban members.'},
                            status=status.HTTP_403_FORBIDDEN)
         
@@ -998,3 +1177,302 @@ class CommunityModeratorsByPathView(generics.ListAPIView):
         path = self.kwargs.get('path')
         community = get_object_or_404(Community, path=path)
         return CommunityModerator.objects.filter(community=community)
+
+
+class UnbanByPathView(generics.GenericAPIView):
+    """
+    API endpoint for unbanning a user from a community by path.
+    This provides a simpler API for unbanning users: /communities/{community_path}/unban/{username}/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, path, username):
+        try:
+            # Get the community by path
+            community = get_object_or_404(Community, path=path)
+            
+            # Check if the requester is a moderator
+            if not CommunityModerator.objects.filter(
+                community=community, user=request.user).exists() and not request.user.is_staff:
+                return Response({'detail': 'Only moderators can unban members.'},
+                               status=status.HTTP_403_FORBIDDEN)
+            
+            # Get the user by username
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                return Response({'detail': 'User not found.'},
+                               status=status.HTTP_404_NOT_FOUND)
+            
+            # Get the community member
+            try:
+                member = CommunityMember.objects.get(community=community, user=user)
+            except CommunityMember.DoesNotExist:
+                return Response({'detail': 'This user is not a member of this community.'},
+                               status=status.HTTP_404_NOT_FOUND)
+            
+            # Check if member is banned
+            if not member.is_banned:
+                return Response({'detail': 'This member is not banned.'},
+                              status=status.HTTP_400_BAD_REQUEST)
+            
+            # Unban the member
+            member.unban()
+            
+            # Send notification to the unbanned user
+            from notifications.models import Notification
+            Notification.send_mod_action_notification(
+                user=member.user,
+                community=member.community,
+                action=f"Your ban from r/{member.community.name} has been lifted",
+                admin_user=request.user,
+                link_url=f"/c/{member.community.path}"
+            )
+            
+            # Log member unban
+            AuditLog.log(
+                action='community_member_unban',
+                entity_type='community_member',
+                entity_id=member.id,
+                user=request.user,
+                ip_address=self.get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                details={
+                    'community_id': str(member.community.id),
+                    'community_name': member.community.name,
+                    'user_id': str(member.user.id),
+                    'username': member.user.username
+                }
+            )
+            
+            return Response({'detail': f'User {username} has been unbanned from {community.name}.'})
+            
+        except Exception as e:
+            return Response({'detail': f'Error unbanning user: {str(e)}'},
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def get_client_ip(self, request):
+        """Get client IP address from request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class BanByPathView(generics.GenericAPIView):
+    """
+    API endpoint for banning a user from a community by path.
+    This provides a simpler API for banning users: /communities/{community_path}/ban/{username}/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, path, username):
+        try:
+            # Get the community by path
+            community = get_object_or_404(Community, path=path)
+            
+            # Check if the requester is a moderator
+            if not CommunityModerator.objects.filter(
+                community=community, user=request.user).exists() and not request.user.is_staff:
+                return Response({'detail': 'Only moderators can ban members.'},
+                               status=status.HTTP_403_FORBIDDEN)
+            
+            # Get the user by username
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                return Response({'detail': 'User not found.'},
+                               status=status.HTTP_404_NOT_FOUND)
+            
+            # Get or create the community member
+            member, created = CommunityMember.objects.get_or_create(
+                community=community,
+                user=user,
+                defaults={'is_approved': not community.is_private and not community.is_restricted}
+            )
+            
+            # Check if member is already banned
+            if member.is_banned:
+                return Response({'detail': 'This user is already banned from this community.'},
+                              status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get ban parameters
+            reason = request.data.get('reason', '')
+            duration_days = request.data.get('duration_days')
+            if duration_days:
+                try:
+                    duration_days = int(duration_days)
+                except (TypeError, ValueError):
+                    return Response({'detail': 'Duration days must be a valid number.'},
+                                  status=status.HTTP_400_BAD_REQUEST)
+            
+            # Ban the member
+            member.ban(reason=reason, banned_by=request.user, duration_days=duration_days)
+            
+            # Create a ban duration message for notification
+            if duration_days:
+                duration_msg = f" for {duration_days} days"
+            else:
+                duration_msg = " permanently"
+            
+            # Send notification to the banned user
+            from notifications.models import Notification
+            Notification.send_mod_action_notification(
+                user=member.user,
+                community=member.community,
+                action=f"You have been banned from r/{member.community.name}{duration_msg}: {reason}",
+                admin_user=request.user,
+                link_url=f"/c/{member.community.path}"
+            )
+            
+            # Log member ban
+            AuditLog.log(
+                action='community_member_ban',
+                entity_type='community_member',
+                entity_id=member.id,
+                user=request.user,
+                ip_address=self.get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                details={
+                    'community_id': str(member.community.id),
+                    'community_name': member.community.name,
+                    'user_id': str(member.user.id),
+                    'username': member.user.username,
+                    'reason': reason,
+                    'duration_days': duration_days
+                }
+            )
+            
+            return Response({'detail': f'User {username} has been banned from {community.name}.'})
+            
+        except Exception as e:
+            return Response({'detail': f'Error banning user: {str(e)}'},
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def get_client_ip(self, request):
+        """Get client IP address from request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class BannedUsersView(generics.ListAPIView):
+    """
+    API endpoint to list banned users of a community by its path.
+    """
+    serializer_class = CommunityMemberSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        path = self.kwargs.get('path')
+        community = get_object_or_404(Community, path=path)
+        
+        # Check if the requester is a moderator or admin
+        is_moderator = CommunityModerator.objects.filter(
+            community=community, user=self.request.user).exists()
+        
+        if not is_moderator and not self.request.user.is_staff:
+            return CommunityMember.objects.none()  # Return empty queryset if not authorized
+        
+        return CommunityMember.objects.filter(community=community, is_banned=True)
+    
+    def list(self, request, *args, **kwargs):
+        path = self.kwargs.get('path')
+        community = get_object_or_404(Community, path=path)
+        
+        # Check permissions
+        is_moderator = CommunityModerator.objects.filter(
+            community=community, user=request.user).exists()
+        
+        if not is_moderator and not request.user.is_staff:
+            return Response({'detail': 'Only moderators can view banned users list.'},
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        # Get the queryset and serialize it
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class BanStatusView(generics.GenericAPIView):
+    """
+    API endpoint to check if the authenticated user is banned in a community.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, path):
+        community = get_object_or_404(Community, path=path)
+        user = request.user
+        
+        try:
+            member = CommunityMember.objects.get(community=community, user=user)
+            is_banned = member.is_banned
+            ban_reason = member.ban_reason if is_banned else None
+            banned_until = member.banned_until if is_banned else None
+            
+            return Response({
+                'is_banned': is_banned,
+                'ban_reason': ban_reason,
+                'banned_until': banned_until,
+            })
+        except CommunityMember.DoesNotExist:
+            # User is not a member
+            return Response({
+                'is_banned': False,
+                'detail': 'User is not a member of this community'
+            })
+
+
+class UserBanStatusView(generics.GenericAPIView):
+    """
+    API endpoint to check if a specific user is banned in a community.
+    This endpoint is accessible to all users, including unauthenticated ones.
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request, path, username):
+        try:
+            # Get the community by path
+            community = get_object_or_404(Community, path=path)
+            
+            # Get the user by username
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                return Response({'detail': 'User not found.'},
+                               status=status.HTTP_404_NOT_FOUND)
+            
+            # Check if the user is a member and if they're banned
+            try:
+                member = CommunityMember.objects.get(community=community, user=user)
+                is_banned = member.is_banned
+                
+                # Only return minimal information for privacy reasons
+                return Response({
+                    'username': username,
+                    'is_banned': is_banned,
+                    'community': community.name
+                })
+            except CommunityMember.DoesNotExist:
+                # User is not a member
+                return Response({
+                    'username': username,
+                    'is_banned': False,
+                    'community': community.name,
+                    'detail': 'User is not a member of this community'
+                })
+                
+        except Exception as e:
+            return Response({'detail': f'Error checking ban status: {str(e)}'},
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)

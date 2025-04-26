@@ -120,13 +120,13 @@ export default function HomePage() {
                 </p>
               }
             >
-              <div className="space-y-4">
+            <div className="space-y-4">
                 {allPosts.map(post => (
-                  <div key={post.id} className="mb-4 mx-4 lg:mx-0">
-                    <PostCard post={post} />
-                  </div>
-                ))}
-              </div>
+                <div key={post.id} className="mb-4 mx-4 lg:mx-0">
+                  <PostCard post={post} />
+                </div>
+              ))}
+            </div>
             </InfiniteScroll>
           )}
         </div>

@@ -28,6 +28,33 @@ class CommunitySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'path', 'created_at', 'created_by', 'member_count', 'is_member', 'moderators']
     
+    def validate_name(self, value):
+        """
+        Validate that community name contains only lowercase a-z letters.
+        """
+        import re
+        if not re.match(r'^[a-z]+$', value.lower()):
+            raise serializers.ValidationError(
+                "Community name must contain only lowercase a-z characters, no spaces, numbers, or special characters."
+            )
+        
+        # Check if a community with this name already exists
+        # This is needed because the lowercase conversion might cause conflicts
+        if Community.objects.filter(name=value.lower()).exists():
+            raise serializers.ValidationError(
+                "A community with this name already exists. Community names must be unique."
+            )
+            
+        # Check if a community with this path would already exist
+        from django.utils.text import slugify
+        slug = slugify(value.lower())
+        if Community.objects.filter(path=slug).exists():
+            raise serializers.ValidationError(
+                f"A community with the path '{slug}' already exists. Please choose a different name."
+            )
+            
+        return value.lower()  # Ensure the name is lowercase
+    
     def get_is_member(self, obj):
         """Check if the current user is a member of the community."""
         request = self.context.get('request')

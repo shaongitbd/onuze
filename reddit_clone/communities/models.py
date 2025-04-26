@@ -35,21 +35,34 @@ class Community(models.Model):
     def __str__(self):
         return self.name
     
+    def clean(self):
+        """
+        Validate community name to ensure it only contains lowercase a-z characters.
+        """
+        import re
+        if not re.match(r'^[a-z]+$', self.name):
+            from django.core.exceptions import ValidationError
+            raise ValidationError("Community name must contain only lowercase a-z characters, no spaces, numbers, or special characters.")
+    
     def save(self, *args, **kwargs):
+        # Convert name to lowercase
+        self.name = self.name.lower()
+        
         # Generate a slug if one doesn't exist
         if not self.path:
-            # Base the slug on the name
+            # Base the slug on the name (already lowercase)
             base_slug = slugify(self.name)
             
             # Check if the slug already exists
-            slug = base_slug
-            counter = 1
-            while Community.objects.filter(path=slug).exists():
-                # If slug exists, append a counter
-                slug = f"{base_slug}-{counter}"
-                counter += 1
+            if Community.objects.filter(path=base_slug).exists():
+                from django.core.exceptions import ValidationError
+                raise ValidationError(f"A community with the path '{base_slug}' already exists. Please choose a different name.")
             
-            self.path = slug
+            self.path = base_slug
+        
+        # Run validation
+        self.full_clean()
+        
         super().save(*args, **kwargs)
     
     def get_absolute_url(self):

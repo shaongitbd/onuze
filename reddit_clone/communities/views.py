@@ -10,6 +10,7 @@ from .serializers import (
 from .permissions import IsCommunityOwnerOrReadOnly, IsCommunityModeratorOrReadOnly
 from security.models import AuditLog
 from django.db.models import F
+import django.core.exceptions
 
 
 class CommunityViewSet(viewsets.ModelViewSet):
@@ -49,6 +50,10 @@ class CommunityViewSet(viewsets.ModelViewSet):
                 is_owner=True
             )
             
+            # Set the initial member count to 1 since the creator is a member
+            community.member_count = 1
+            community.save(update_fields=['member_count'])
+            
             # Log community creation
             AuditLog.log(
                 action='community_create',
@@ -64,6 +69,24 @@ class CommunityViewSet(viewsets.ModelViewSet):
                     'is_restricted': community.is_restricted
                 }
             )
+        except django.core.exceptions.ValidationError as e:
+            # Log failed community creation due to validation error
+            AuditLog.log(
+                action='community_create_failed',
+                entity_type='community',
+                user=self.request.user,
+                ip_address=self.get_client_ip(self.request),
+                user_agent=self.request.META.get('HTTP_USER_AGENT', ''),
+                status='failed',
+                details={
+                    'name': serializer.validated_data.get('name', 'unknown'),
+                    'is_private': serializer.validated_data.get('is_private', False),
+                    'is_restricted': serializer.validated_data.get('is_restricted', False),
+                    'error': str(e),
+                    'validation_error': True
+                }
+            )
+            raise
         except Exception as e:
             # Log failed community creation
             AuditLog.log(

@@ -124,7 +124,7 @@ class PostSerializer(serializers.ModelSerializer):
                 validated_data['flair'] = flair
             except Flair.DoesNotExist:
                 # Fail silently if flair doesn't exist or belong to community
-                pass 
+                pass
         
         # Create the Post instance first
         post = Post.objects.create(**validated_data)

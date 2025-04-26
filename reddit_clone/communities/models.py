@@ -3,7 +3,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
 from users.models import User
-
+from rest_framework.exceptions import PermissionDenied, NotFound
 
 class Community(models.Model):
     """
@@ -42,7 +42,7 @@ class Community(models.Model):
         import re
         if not re.match(r'^[a-z]+$', self.name):
             from django.core.exceptions import ValidationError
-            raise ValidationError("Community name must contain only lowercase a-z characters, no spaces, numbers, or special characters.")
+            raise PermissionDenied("Community name must contain only lowercase a-z characters, no spaces, numbers, or special characters.")
     
     def save(self, *args, **kwargs):
         # Convert name to lowercase
@@ -55,8 +55,7 @@ class Community(models.Model):
             
             # Check if the slug already exists
             if Community.objects.filter(path=base_slug).exists():
-                from django.core.exceptions import ValidationError
-                raise ValidationError(f"A community with the path '{base_slug}' already exists. Please choose a different name.")
+                raise PermissionDenied(f"A community with the path '{base_slug}' already exists. Please choose a different name.")
             
             self.path = base_slug
         

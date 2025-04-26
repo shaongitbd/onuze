@@ -3,6 +3,7 @@ from .models import (
     Community, CommunityMember, CommunityModerator, 
     CommunityRule, Flair, CommunitySetting
 )
+from rest_framework.exceptions import PermissionDenied, NotFound
 
 # Add a brief serializer for Communities to avoid circular imports
 class CommunityBriefSerializer(serializers.ModelSerializer):
@@ -34,14 +35,14 @@ class CommunitySerializer(serializers.ModelSerializer):
         """
         import re
         if not re.match(r'^[a-z]+$', value.lower()):
-            raise serializers.ValidationError(
+            raise PermissionDenied(
                 "Community name must contain only lowercase a-z characters, no spaces, numbers, or special characters."
             )
         
         # Check if a community with this name already exists
         # This is needed because the lowercase conversion might cause conflicts
         if Community.objects.filter(name=value.lower()).exists():
-            raise serializers.ValidationError(
+            raise PermissionDenied(
                 "A community with this name already exists. Community names must be unique."
             )
             
@@ -49,7 +50,7 @@ class CommunitySerializer(serializers.ModelSerializer):
         from django.utils.text import slugify
         slug = slugify(value.lower())
         if Community.objects.filter(path=slug).exists():
-            raise serializers.ValidationError(
+            raise PermissionDenied(
                 f"A community with the path '{slug}' already exists. Please choose a different name."
             )
             

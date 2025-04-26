@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation';
 import fetchAPI, { uploadImage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { getCookie } from '@/lib/utils';
+import Spinner from '@/components/Spinner';
 
 function CreateCommunityPage() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [iconFile, setIconFile] = useState(null);
+    const [iconPreview, setIconPreview] = useState('');
     const [bannerFile, setBannerFile] = useState(null);
-    const [sidebarFile, setSidebarFile] = useState(null);
+    const [bannerPreview, setBannerPreview] = useState('');
+    const [sidebarContent, setSidebarContent] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const router = useRouter();
@@ -23,10 +26,23 @@ function CreateCommunityPage() {
         return null; // Render nothing while redirecting
     }
 
-    const handleFileChange = (setter) => (event) => {
+    const handleFileChange = (setter, previewSetter) => (event) => {
         if (event.target.files && event.target.files[0]) {
-            setter(event.target.files[0]);
+            const file = event.target.files[0];
+            setter(file);
+            
+            // Create preview URL
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                previewSetter(reader.result);
+            };
+            reader.readAsDataURL(file);
         }
+    };
+    
+    const handleRemoveFile = (fileSetter, previewSetter) => () => {
+        fileSetter(null);
+        previewSetter('');
     };
 
     const handleSubmit = async (event) => {
@@ -43,7 +59,6 @@ function CreateCommunityPage() {
         try {
             let iconUrl = null;
             let bannerUrl = null;
-            let sidebarImageUrl = null;
 
             // Upload images if selected
             if (iconFile) {
@@ -54,66 +69,65 @@ function CreateCommunityPage() {
                 const result = await uploadImage(bannerFile, 'community');
                 bannerUrl = result.url;
             }
-            if (sidebarFile) {
-                const result = await uploadImage(sidebarFile, 'community');
-                sidebarImageUrl = result.url;
-            }
 
             // Prepare community data
             const communityData = {
                 name: name.trim(),
                 description: description.trim(),
-                icon_url: iconUrl,
-                banner_url: bannerUrl,
-                sidebar_image_url: sidebarImageUrl,
+                icon_image: iconUrl,
+                banner_image: bannerUrl,
+                sidebar_content: sidebarContent.trim(),
             };
 
             // Get JWT token (first try cookie, then localStorage)
           
         
             // Create the community
-            const response = await fetchAPI(`/communities/`, {
-                method: 'POST',
-           
-                body: JSON.stringify(communityData)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error( `Failed to create community: ${response.status}`);
+            try {
+                const response = await fetchAPI(`/communities/`, {
+                    method: 'POST',
+                    body: JSON.stringify(communityData)
+                });
+                
+                console.log('Community created successfully:', response);
+                
+                // Redirect to the new community page
+                router.push(`/c/${response.name}`);
+            } catch (err) {
+                console.error('Failed to create community:', err);
+                // Extract error message from fetchAPI error
+                setError(err.message || 'Failed to create community. Please try again.');
+                setIsLoading(false);
             }
-
-            const newCommunity = await response.json();
-            console.log('Community created successfully:', newCommunity);
-
-            // Redirect to the new community page
-            router.push(`/c/${newCommunity.name}`);
         } catch (err) {
             console.error('Failed to create community:', err);
             setError(err.message || 'Failed to create community. Please try again.');
+            setIsLoading(false);
         } finally {
             setIsLoading(false);
         }
     };
 
     if (authLoading) {
-        return <div>Loading...</div>; // Show loading state while checking auth
+        return <div className="text-center py-8"><Spinner /></div>;
     }
 
     return (
-        <div className="max-w-2xl mx-auto mt-8 p-4 bg-white rounded shadow">
-            <h1 className="text-2xl font-bold mb-6 text-center">Create a Community</h1>
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                        Community Name (c/)
-                    </label>
-                    <div className="mt-1">
+        <div className="max-w-3xl mx-auto px-4 py-8">
+            <h1 className="text-2xl font-bold mb-6">Create a Community</h1>
+            
+            <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg">
+                <div className="p-6">
+                    {/* Community Name */}
+                    <div className="mb-4">
+                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                            Community Name (c/)
+                        </label>
                         <input
                             type="text"
                             name="name"
                             id="name"
-                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             required
@@ -123,57 +137,135 @@ function CreateCommunityPage() {
                         />
                         <p className="mt-1 text-xs text-gray-500">Cannot contain spaces or special characters other than underscores. Max 21 characters.</p>
                     </div>
-                </div>
 
-                <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                        Description (Optional)
-                    </label>
-                    <div className="mt-1">
+                    {/* Description */}
+                    <div className="mb-4">
+                        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                            Description (Optional)
+                        </label>
                         <textarea
                             id="description"
                             name="description"
                             rows={4}
-                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border border-gray-300 rounded-md"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             maxLength={500}
+                            placeholder="Community description"
                         />
-                         <p className="mt-1 text-xs text-gray-500">Max 500 characters.</p>
+                        <p className="mt-1 text-xs text-gray-500 text-right">
+                            {description.length}/500
+                        </p>
                     </div>
-                </div>
 
-                {/* Image Uploads */}
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Icon Image (Optional)</label>
-                        <input type="file" accept="image/*" onChange={handleFileChange(setIconFile)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
-                        {iconFile && <span className="text-xs text-gray-600 ml-2">{iconFile.name}</span>}
+                    {/* Image Uploads */}
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Icon Image (Optional)</label>
+                        {iconPreview ? (
+                            <div className="relative mb-2 border p-2 rounded-md">
+                                <img src={iconPreview} alt="Icon Preview" className="max-h-40 rounded-md mx-auto" />
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveFile(setIconFile, setIconPreview)}
+                                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs"
+                                    aria-label="Remove file"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center w-full">
+                                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                    <div className="flex flex-col items-center justify-center pt-3 pb-3">
+                                        <svg className="w-8 h-8 mb-3 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                                            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                                        </svg>
+                                        <p className="text-xs text-gray-500">Click to upload community icon</p>
+                                    </div>
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={handleFileChange(setIconFile, setIconPreview)} 
+                                        className="hidden" 
+                                        id="icon-upload"
+                                    />
+                                </label>
+                            </div>
+                        )}
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Banner Image (Optional)</label>
-                        <input type="file" accept="image/*" onChange={handleFileChange(setBannerFile)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
-                        {bannerFile && <span className="text-xs text-gray-600 ml-2">{bannerFile.name}</span>}
-                    </div>
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Sidebar Image (Optional)</label>
-                        <input type="file" accept="image/*" onChange={handleFileChange(setSidebarFile)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
-                        {sidebarFile && <span className="text-xs text-gray-600 ml-2">{sidebarFile.name}</span>}
-                    </div>
-                </div>
 
-                {error && (
-                    <p className="text-sm text-red-600">{error}</p>
-                )}
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Banner Image (Optional)</label>
+                        {bannerPreview ? (
+                            <div className="relative mb-2 border p-2 rounded-md">
+                                <img src={bannerPreview} alt="Banner Preview" className="w-full h-32 object-cover rounded-md" />
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveFile(setBannerFile, setBannerPreview)}
+                                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs"
+                                    aria-label="Remove file"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center w-full">
+                                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                    <div className="flex flex-col items-center justify-center pt-3 pb-3">
+                                        <svg className="w-8 h-8 mb-3 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                                            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                                        </svg>
+                                        <p className="text-xs text-gray-500">Click to upload banner image (recommended: 1920×384)</p>
+                                    </div>
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={handleFileChange(setBannerFile, setBannerPreview)} 
+                                        className="hidden" 
+                                        id="banner-upload"
+                                    />
+                                </label>
+                            </div>
+                        )}
+                    </div>
 
-                <div>
-                    <button
-                        type="submit"
-                        disabled={isLoading || authLoading}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isLoading ? 'Creating...' : 'Create Community'}
-                    </button>
+                    {/* Sidebar Content */}
+                    <div className="mb-4">
+                        <label htmlFor="sidebarContent" className="block text-sm font-medium text-gray-700 mb-1">
+                            Sidebar Content (Optional)
+                        </label>
+                        <textarea
+                            id="sidebarContent"
+                            name="sidebarContent"
+                            rows={6}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
+                            value={sidebarContent}
+                            onChange={(e) => setSidebarContent(e.target.value)}
+                            placeholder="Add text, links, and formatting for your community's sidebar"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">You can use basic HTML formatting. This will be displayed in your community's sidebar.</p>
+                    </div>
+
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    {/* Submit Button */}
+                    <div className="flex justify-end pt-4 border-t mt-6">
+                        <button
+                            type="submit"
+                            disabled={isLoading || authLoading}
+                            className={`px-6 py-2 font-medium rounded-full text-white ${
+                                isLoading || authLoading
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-red-600 hover:bg-red-700'
+                            }`}
+                        >
+                            {isLoading ? <Spinner size="sm" /> : 'Create Community'}
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

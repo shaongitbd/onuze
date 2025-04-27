@@ -10,6 +10,7 @@ from security.models import AuditLog
 from django.db.models import Q
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.mixins import RetrieveModelMixin
+from notifications.models import Notification
 
 
 class ReportViewSet(viewsets.ModelViewSet):
@@ -265,6 +266,24 @@ class BanAppealViewSet(viewsets.ModelViewSet):
             details={'notes': notes, 'response': response_to_user}
         )
         
+        # Send notification to user
+        community_name = appeal.community.name if appeal.community else "site-wide"
+        message = f"Your ban appeal for {community_name} has been approved."
+        if response_to_user:
+            message += f" Response: {response_to_user}"
+        
+        link_url = "/account/ban-appeals" if appeal.appeal_type == BanAppeal.SITE_BAN else f"/c/{appeal.community.path}"
+        
+        Notification.send_notification(
+            user=appeal.user,
+            notification_type=Notification.MOD_ACTION,
+            content_type=Notification.COMMUNITY if appeal.community else Notification.USER,
+            content_id=appeal.community.id if appeal.community else appeal.user.id,
+            message=message,
+            sender=user,
+            link_url=link_url
+        )
+        
         return Response(self.get_serializer(appeal).data)
     
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
@@ -290,6 +309,24 @@ class BanAppealViewSet(viewsets.ModelViewSet):
             user_agent=request.META.get('HTTP_USER_AGENT', ''),
             status='success',
             details={'notes': notes, 'response': response_to_user}
+        )
+        
+        # Send notification to user
+        community_name = appeal.community.name if appeal.community else "site-wide"
+        message = f"Your ban appeal for {community_name} has been rejected."
+        if response_to_user:
+            message += f" Reason: {response_to_user}"
+        
+        link_url = "/account/ban-appeals" if appeal.appeal_type == BanAppeal.SITE_BAN else f"/c/{appeal.community.path}"
+        
+        Notification.send_notification(
+            user=appeal.user,
+            notification_type=Notification.MOD_ACTION,
+            content_type=Notification.COMMUNITY if appeal.community else Notification.USER,
+            content_id=appeal.community.id if appeal.community else appeal.user.id,
+            message=message,
+            sender=user,
+            link_url=link_url
         )
         
         return Response(self.get_serializer(appeal).data)
@@ -444,6 +481,24 @@ class CommunityBanAppealDetailView(RetrieveModelMixin, GenericViewSet):
             details={'notes': notes, 'response': response_to_user}
         )
         
+        # Send notification to user
+        community_name = ban_appeal.community.name if ban_appeal.community else "site-wide"
+        message = f"Your ban appeal for {community_name} has been approved."
+        if response_to_user:
+            message += f" Response: {response_to_user}"
+        
+        link_url = "/account/ban-appeals" if ban_appeal.appeal_type == BanAppeal.SITE_BAN else f"/c/{ban_appeal.community.path}"
+        
+        Notification.send_notification(
+            user=ban_appeal.user,
+            notification_type=Notification.MOD_ACTION,
+            content_type=Notification.COMMUNITY if ban_appeal.community else Notification.USER,
+            content_id=ban_appeal.community.id if ban_appeal.community else ban_appeal.user.id,
+            message=message,
+            sender=user,
+            link_url=link_url
+        )
+        
         return Response(self.get_serializer(ban_appeal).data)
     
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
@@ -469,6 +524,24 @@ class CommunityBanAppealDetailView(RetrieveModelMixin, GenericViewSet):
             user_agent=request.META.get('HTTP_USER_AGENT', ''),
             status='success',
             details={'notes': notes, 'response': response_to_user}
+        )
+        
+        # Send notification to user
+        community_name = ban_appeal.community.name if ban_appeal.community else "site-wide"
+        message = f"Your ban appeal for {community_name} has been rejected."
+        if response_to_user:
+            message += f" Reason: {response_to_user}"
+        
+        link_url = "/account/ban-appeals" if ban_appeal.appeal_type == BanAppeal.SITE_BAN else f"/c/{ban_appeal.community.path}"
+        
+        Notification.send_notification(
+            user=ban_appeal.user,
+            notification_type=Notification.MOD_ACTION,
+            content_type=Notification.COMMUNITY if ban_appeal.community else Notification.USER,
+            content_id=ban_appeal.community.id if ban_appeal.community else ban_appeal.user.id,
+            message=message,
+            sender=user,
+            link_url=link_url
         )
         
         return Response(self.get_serializer(ban_appeal).data)

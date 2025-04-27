@@ -15,6 +15,8 @@ communities_router.register(r'moderators', views.CommunityModeratorViewSet, base
 communities_router.register(r'members', views.CommunityMemberViewSet, basename='community-members') 
 # Also nest rules under the community path
 communities_router.register(r'rules', views.CommunityRuleViewSet, basename='community-rules') 
+# Also nest flairs under the community path
+communities_router.register(r'flairs', views.FlairViewSet, basename='community-flairs')
 
 
 # --- Other Routers (Keep as is or adjust if needed) ---

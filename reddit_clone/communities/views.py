@@ -432,7 +432,7 @@ class CommunityMemberViewSet(viewsets.ModelViewSet):
             print("DEBUG: 'community_path' not found in kwargs")
             return None 
         return get_object_or_404(Community, path=community_path)
-
+    
     def get_queryset(self):
         """Filter members based on the community path from the URL."""
         community = self._get_community_from_path()
@@ -460,7 +460,7 @@ class CommunityMemberViewSet(viewsets.ModelViewSet):
         self.check_object_permissions(self.request, obj)
         
         return obj
-
+    
     def perform_create(self, serializer):
         """Associate the member with the community from the URL path."""
         community = self._get_community_from_path()
@@ -539,12 +539,12 @@ class CommunityMemberViewSet(viewsets.ModelViewSet):
     def ban(self, request, community_community_path=None, username=None):
         member = self.get_object() # Gets member via username
         # ... (rest of ban logic is the same) ...
-
+    
     @action(detail=True, methods=['post'])
     def unban(self, request, community_community_path=None, username=None):
         member = self.get_object() # Gets member via username
         # ... (rest of unban logic is the same) ...
-
+    
     @action(detail=True, methods=['post'])
     def reject(self, request, community_community_path=None, username=None):
         member = self.get_object() # Gets member via username
@@ -555,7 +555,7 @@ class CommunityMemberViewSet(viewsets.ModelViewSet):
     # @action(detail=False, methods=['post'], url_path='unban-user')
     # def unban_user(self, request):
     #     ...
-
+    
     def get_client_ip(self, request):
         """Get client IP address from request."""
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -581,7 +581,7 @@ class CommunityModeratorViewSet(viewsets.ModelViewSet):
             # This should not happen if routing is correct, but handle defensively
             return None 
         return get_object_or_404(Community, path=community_path)
-
+    
     def get_queryset(self):
         """Filter moderators based on the community path from the URL."""
         community = self._get_community_from_path()
@@ -675,7 +675,7 @@ class CommunityModeratorViewSet(viewsets.ModelViewSet):
             if current_owner_moderator == new_owner_moderator:
                  return Response({'detail': 'New owner cannot be the same as the current owner.'},
                                status=status.HTTP_400_BAD_REQUEST)
-
+            
             # Transfer ownership
             current_owner_moderator.is_owner = False
             current_owner_moderator.save()
@@ -764,7 +764,7 @@ class CommunityRuleViewSet(viewsets.ModelViewSet):
             return None
             
         return get_object_or_404(Community, path=community_path)
-
+    
     def get_queryset(self):
         """Filter rules based on the community path from the URL."""
         community = self._get_community_from_path()
@@ -774,7 +774,7 @@ class CommunityRuleViewSet(viewsets.ModelViewSet):
         # or return none if nesting is strictly enforced.
         # For now, assume nesting, return none if path missing.
         return CommunityRule.objects.none()
-
+    
     def perform_create(self, serializer):
         """Associate the rule with the community from the URL path."""
         community = self._get_community_from_path()
@@ -812,7 +812,7 @@ class CommunityRuleViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         rule = serializer.save()
         # ... (logging remains the same) ...
-
+    
     def perform_destroy(self, instance):
         # Log rule deletion
         # ... (logging remains the same) ...
@@ -908,17 +908,38 @@ class CommunitySettingViewSet(viewsets.ModelViewSet):
 class FlairViewSet(viewsets.ModelViewSet):
     """
     API endpoint for community flairs.
+    Now nested under /communities/{community_path}/flairs/
     """
     serializer_class = FlairSerializer
     permission_classes = [permissions.IsAuthenticated, IsCommunityModeratorOrReadOnly]
     
     def get_queryset(self):
-        return Flair.objects.filter(community__id=self.kwargs.get('community_id', None))
+        # Check if there's a community path parameter (for nested routes)
+        community_path = self.kwargs.get('community_community', None)
+        if community_path:
+            # For nested route: /communities/{path}/flairs/
+            community = get_object_or_404(Community, path=community_path)
+            return Flair.objects.filter(community=community)
+        
+        # For non-nested route: /communities/flairs/ with optional query param
+        community_id = self.request.query_params.get('community', None)
+        if community_id:
+            return Flair.objects.filter(community__id=community_id)
+        
+        # Return all flairs if no community specified (admin access)
+        return Flair.objects.all()
     
     def perform_create(self, serializer):
         try:
-            community_id = self.kwargs.get('community_id')
+            # For nested route: /communities/{path}/flairs/
+            community_path = self.kwargs.get('community_community', None)
+            if community_path:
+                community = get_object_or_404(Community, path=community_path)
+            else:
+                # For non-nested route, require community ID in request data
+                community_id = self.request.data.get('community')
             community = get_object_or_404(Community, id=community_id)
+            
             flair = serializer.save(
                 community=community,
                 created_by=self.request.user
@@ -949,7 +970,7 @@ class FlairViewSet(viewsets.ModelViewSet):
                 user_agent=self.request.META.get('HTTP_USER_AGENT', ''),
                 status='failed',
                 details={
-                    'community_id': self.kwargs.get('community_id'),
+                    'community_path': self.kwargs.get('community_community'),
                     'flair_name': serializer.validated_data.get('name', 'unknown'),
                     'error': str(e)
                 }
@@ -990,6 +1011,7 @@ class FlairViewSet(viewsets.ModelViewSet):
                 user_agent=self.request.META.get('HTTP_USER_AGENT', ''),
                 status='failed',
                 details={
+                    'community_path': self.kwargs.get('community_community'),
                     'updated_fields': list(serializer.validated_data.keys()),
                     'error': str(e)
                 }

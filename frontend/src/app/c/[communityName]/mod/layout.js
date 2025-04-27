@@ -169,6 +169,14 @@ export default function ModeratorLayout({ children }) {
                     Banned Users
                   </Link>
                   <Link 
+                    href={`/c/${communityName}/mod/ban-appeals`}
+                    className={`block px-3 py-2 rounded-md ${isActive('/mod/ban-appeals') 
+                      ? 'bg-red-50 text-red-700 font-medium' 
+                      : 'text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    Ban Appeals
+                  </Link>
+                  <Link 
                     href={`/c/${communityName}/mod/members`}
                     className={`block px-3 py-2 rounded-md ${isActive('/mod/members') 
                       ? 'bg-red-50 text-red-700 font-medium' 

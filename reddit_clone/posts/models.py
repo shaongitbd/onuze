@@ -246,48 +246,6 @@ class PostImage(models.Model):
         return f"Image for {self.post.title} ({self.order})"
 
 
-class PostReport(models.Model):
-    """
-    Report model for posts.
-    """
-    REPORT_REASONS = (
-        ('spam', 'Spam'),
-        ('harassment', 'Harassment'),
-        ('violence', 'Violence'),
-        ('misinformation', 'Misinformation'),
-        ('hate', 'Hate Speech'),
-        ('self_harm', 'Self Harm'),
-        ('nsfw', 'NSFW Content Not Marked'),
-        ('other', 'Other'),
-    )
-    
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='reports')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='post_reports')
-    reason = models.CharField(max_length=20, choices=REPORT_REASONS)
-    description = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(default=timezone.now)
-    resolved = models.BooleanField(default=False)
-    resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='resolved_post_reports')
-    resolved_at = models.DateTimeField(null=True, blank=True)
-    
-    class Meta:
-        db_table = 'post_report'
-        verbose_name = 'Post Report'
-        verbose_name_plural = 'Post Reports'
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        return f"Report on {self.post.title} by {self.user.username}"
-    
-    def resolve(self, user):
-        """Mark the report as resolved."""
-        self.resolved = True
-        self.resolved_by = user
-        self.resolved_at = timezone.now()
-        self.save(update_fields=['resolved', 'resolved_by', 'resolved_at'])
-
-
 class PostSave(models.Model):
     """
     Saved posts model.

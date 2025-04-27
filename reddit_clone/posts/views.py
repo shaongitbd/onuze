@@ -13,8 +13,8 @@ from rest_framework.exceptions import PermissionDenied, NotFound
 import os
 import io
 from PIL import Image
-from .models import Post, PostMedia, PostSave, PostReport, PostImage, Vote
-from .serializers import PostSerializer, PostMediaSerializer, PostImageSerializer, PostReportSerializer
+from .models import Post, PostMedia, PostSave, PostImage, Vote
+from .serializers import PostSerializer, PostMediaSerializer, PostImageSerializer
 from utils.media_validators import validate_image, validate_video, generate_safe_filename, ValidationError
 from communities.models import Community, CommunityMember, CommunityModerator, Flair, CommunityRule
 from security.models import AuditLog

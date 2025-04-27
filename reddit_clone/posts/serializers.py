@@ -5,7 +5,7 @@ from users.serializers import UserSerializer, UserBriefSerializer
 from communities.models import Community, Flair
 from communities.serializers import CommunitySerializer, FlairSerializer
 from utils.sanitizers import sanitize_html
-from .models import Post, PostMedia, Vote, PostImage, PostReport, PostSave
+from .models import Post, PostMedia, Vote, PostImage, PostSave
 
 # Serializer for handling incoming media data during post creation
 class IncomingPostMediaSerializer(serializers.Serializer):
@@ -124,7 +124,7 @@ class PostSerializer(serializers.ModelSerializer):
                 validated_data['flair'] = flair
             except Flair.DoesNotExist:
                 # Fail silently if flair doesn't exist or belong to community
-                pass
+                pass 
         
         # Create the Post instance first
         post = Post.objects.create(**validated_data)
@@ -249,7 +249,7 @@ class PostCreateSerializer(serializers.ModelSerializer):
         return post
 
 # ... (PostUpdateSerializer might need similar adjustments if you allow media update) ...
-# ... (Rest of the serializers: Vote, PostImage, PostReport, PostSave) ...
+# ... (Rest of the serializers: Vote, PostImage, PostSave) ...
 
 class PostUpdateSerializer(serializers.ModelSerializer):
     """
@@ -300,37 +300,6 @@ class PostImageSerializer(serializers.ModelSerializer):
         model = PostImage
         fields = ['id', 'post', 'image_url', 'order', 'created_at']
         read_only_fields = ['id', 'created_at'] 
-
-
-class PostReportSerializer(serializers.ModelSerializer):
-    """
-    Serializer for post reports.
-    """
-    user = UserBriefSerializer(read_only=True)
-    post_title = serializers.SerializerMethodField(read_only=True)
-    resolved_by_details = UserBriefSerializer(source='resolved_by', read_only=True)
-    
-    class Meta:
-        model = PostReport
-        fields = [
-            'id', 'post', 'post_title', 'user', 'reason', 'description', 
-            'created_at', 'resolved', 'resolved_by', 'resolved_by_details', 'resolved_at'
-        ]
-        read_only_fields = [
-            'id', 'user', 'created_at', 'resolved', 'resolved_by', 
-            'resolved_by_details', 'resolved_at', 'post_title'
-        ]
-    
-    def get_post_title(self, obj):
-        return obj.post.title if obj.post else None
-    
-    def create(self, validated_data):
-        # Get the user from the request
-        request = self.context.get('request')
-        validated_data['user'] = request.user
-        
-        # Create the report
-        return super().create(validated_data)
 
 
 class PostSaveSerializer(serializers.ModelSerializer):

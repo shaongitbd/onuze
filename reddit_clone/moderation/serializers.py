@@ -14,18 +14,45 @@ class ReportSerializer(serializers.ModelSerializer):
     reporter = UserBriefSerializer(read_only=True)
     community = CommunitySerializer(read_only=True)
     resolved_by = UserBriefSerializer(read_only=True)
+    post_path = serializers.SerializerMethodField(read_only=True)
+    comment_path = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Report
         fields = [
             'id', 'reporter', 'community', 'content_type', 'content_id', 
             'reason', 'details', 'created_at', 'status', 'resolved_by', 
-            'resolved_at', 'resolution_notes'
+            'resolved_at', 'resolution_notes', 'post_path', 'comment_path'
         ]
         read_only_fields = [
             'id', 'reporter', 'community', 'created_at', 'status', 
-            'resolved_by', 'resolved_at', 'resolution_notes'
+            'resolved_by', 'resolved_at', 'resolution_notes', 'post_path', 'comment_path'
         ]
+    
+    def get_post_path(self, obj):
+        """Get the path for the post if content type is post or comment."""
+        if obj.content_type == Report.POST:
+            try:
+                post = Post.objects.get(id=obj.content_id)
+                return post.path
+            except Post.DoesNotExist:
+                return None
+        elif obj.content_type == Report.COMMENT:
+            try:
+                comment = Comment.objects.get(id=obj.content_id)
+                return comment.post.path
+            except Comment.DoesNotExist:
+                return None
+        return None
+    
+    def get_comment_path(self, obj):
+        """Get the comment ID if content type is comment."""
+        if obj.content_type == Report.COMMENT:
+            try:
+                return str(obj.content_id)
+            except Comment.DoesNotExist:
+                return None
+        return None
     
     def create(self, validated_data):
         # Set the reporter

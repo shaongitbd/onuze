@@ -7,7 +7,7 @@ router.register('reports', views.ReportViewSet, basename='reports')
 router.register('ban-appeals', views.BanAppealViewSet, basename='ban-appeals')
 
 urlpatterns = [
-    path('communities/<uuid:community_id>/reports/', views.CommunityReportListView.as_view(), name='community-reports'),
+    path('communities/<str:community_path>/reports/', views.CommunityReportListView.as_view(), name='community-reports-by-path'),
 ]
 
 urlpatterns += router.urls 

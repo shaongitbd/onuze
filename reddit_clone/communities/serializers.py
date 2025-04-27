@@ -127,7 +127,7 @@ class CommunityRuleSerializer(serializers.ModelSerializer):
             'id', 'community', 'title', 'description',
             'created_at', 'created_by', 'order'
         ]
-        read_only_fields = ['id', 'created_at', 'created_by']
+        read_only_fields = ['id', 'created_at', 'created_by', 'community']
 
 
 class FlairSerializer(serializers.ModelSerializer):

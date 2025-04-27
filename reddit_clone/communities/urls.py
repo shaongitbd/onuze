@@ -13,12 +13,14 @@ communities_router = NestedSimpleRouter(router, r'', lookup='community')
 communities_router.register(r'moderators', views.CommunityModeratorViewSet, basename='community-moderators')
 # Also nest members under the community path, using username as lookup
 communities_router.register(r'members', views.CommunityMemberViewSet, basename='community-members') 
+# Also nest rules under the community path
+communities_router.register(r'rules', views.CommunityRuleViewSet, basename='community-rules') 
 
 
 # --- Other Routers (Keep as is or adjust if needed) ---
-# Router for rules (currently not nested under community path in ViewSet)
-rules_router = DefaultRouter() 
-rules_router.register('rules', views.CommunityRuleViewSet, basename='community-rules')
+# Router for rules (currently not nested under community path in ViewSet) - REMOVED
+# rules_router = DefaultRouter() 
+# rules_router.register('rules', views.CommunityRuleViewSet, basename='community-rules')
 
 # Router for flairs (currently not nested under community path in ViewSet)
 flairs_router = DefaultRouter()
@@ -39,7 +41,7 @@ urlpatterns = [
     path('', include(communities_router.urls)),
 
     # Include other routers (can be adjusted later if nesting is desired)
-    path('', include(rules_router.urls)), 
+    # path('', include(rules_router.urls)), # REMOVED
     path('', include(flairs_router.urls)),
     
     # UUID-based URL for member management (can be removed/changed later) - REMOVED
@@ -53,4 +55,4 @@ urlpatterns = [
     path('<str:path>/banned/', views.BannedUsersView.as_view(), name='community-banned-users'),
     path('<str:path>/ban-status/', views.BanStatusView.as_view(), name='community-ban-status'),
     path('<str:path>/users/<str:username>/ban-status/', views.UserBanStatusView.as_view(), name='user-ban-status'),
-] 
+]

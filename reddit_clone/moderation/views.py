@@ -142,6 +142,7 @@ class CommunityReportListView(generics.ListAPIView):
     """
     API endpoint for listing reports specific to a community.
     Requires moderator or admin permissions.
+    Now uses community path in URL.
     """
     serializer_class = ReportSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -153,8 +154,8 @@ class CommunityReportListView(generics.ListAPIView):
             return Report.objects.none()
             
         user = self.request.user
-        community_id = self.kwargs.get('community_id')
-        community = get_object_or_404(Community, id=community_id)
+        community_path = self.kwargs.get('community_path') # Get path from URL
+        community = get_object_or_404(Community, path=community_path) # Lookup by path
         
         # Check permissions (Moderator of community or Admin)
         is_moderator = CommunityModerator.objects.filter(user=user, community=community).exists()
@@ -164,6 +165,12 @@ class CommunityReportListView(generics.ListAPIView):
             
         # Filter by status
         status_filter = self.request.query_params.get('status', Report.PENDING)
+        
+        # If status is 'all', return all reports for the community
+        if status_filter == 'all':
+            return Report.objects.filter(community=community).order_by('-created_at')
+            
+        # Otherwise filter by the specified status
         return Report.objects.filter(community=community, status=status_filter).order_by('-created_at')
 
 

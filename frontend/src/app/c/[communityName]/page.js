@@ -8,6 +8,7 @@ import Spinner from '../../../components/Spinner';
 import { useAuth } from '../../../lib/auth';
 import SortTimeControls from '../../../components/SortTimeControls';
 import InfinitePosts from '../../../components/InfinitePosts';
+import ModeratorTools from '../../../components/ModeratorTools';
 
 export default function CommunityPage() {
   const { communityName } = useParams();
@@ -19,6 +20,7 @@ export default function CommunityPage() {
   const [time, setTime] = useState('all');
   const [isProcessingJoin, setIsProcessingJoin] = useState(false);
   const [joinError, setJoinError] = useState(null);
+  const [isModerator, setIsModerator] = useState(false);
 
   useEffect(() => {
     async function fetchCommunityData() {
@@ -27,6 +29,16 @@ export default function CommunityPage() {
         setError(null);
         const communityData = await getSubredditDetail(communityName);
         setCommunity(communityData);
+        
+        // Check if the user is a moderator
+        if (user && communityData.moderators) {
+          const userIsModerator = communityData.moderators.some(
+            mod => mod.user_id === user.id
+          );
+          setIsModerator(userIsModerator);
+        } else {
+          setIsModerator(false);
+        }
       } catch (err) {
         console.error('Failed to fetch community data:', err);
         if (err.response && err.response.status === 404) {
@@ -43,7 +55,7 @@ export default function CommunityPage() {
     if (communityName) {
       fetchCommunityData();
     }
-  }, [communityName]);
+  }, [communityName, user]);
 
   const showTimeFilter = sort === 'top' || sort === 'controversial';
 
@@ -58,7 +70,7 @@ export default function CommunityPage() {
     setIsProcessingJoin(true);
     setJoinError(null);
     try {
-      await joinCommunity(community.id);
+      await joinCommunity(community.path);
       setCommunity(prev => ({
         ...prev,
         is_member: true,
@@ -302,6 +314,9 @@ export default function CommunityPage() {
                   </div>
                 )}
                 {/* -------------------------- */}
+                
+                {/* Moderator Tools Section */}
+                {isModerator && <ModeratorTools communityPath={communityName} />}
                 
                 {user && (
                   <Link 

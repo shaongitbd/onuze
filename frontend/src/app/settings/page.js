@@ -188,8 +188,8 @@ export default function SettingsPage() {
       return;
     }
     
-    if (passwordData.new_password.length < 8) {
-      setPasswordError('New password must be at least 8 characters long');
+    if (passwordData.new_password.length < 10) {
+      setPasswordError('New password must be at least 10 characters long');
       return;
     }
     

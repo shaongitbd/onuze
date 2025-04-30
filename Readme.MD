@@ -195,12 +195,14 @@ REDIS_URL=
 #RECAPTCHA_PUBLIC_KEY=
 #RECAPTCHA_SECRET_KEY=
 
-USE_BUNNY_STORAGE=
+# You can only use bunny.net storage for now. Each file gets uploaded there and the links inserted to image.
+USE_BUNNY_STORAGE=True
 BUNNY_STORAGE_API_KEY=
 BUNNY_STORAGE_ZONE=redify
 BUNNY_STORAGE_REGION=de  
 BUNNY_STORAGE_URL=
 
+#Dont use it set as false its not properly configured 
 USE_BACKBLAZE=False
 B2_BUCKET_NAME=
 B2_ACCESS_KEY=

@@ -1,5 +1,5 @@
 """
-ASGI config for reddit_clone project.
+ASGI config for securethread_backend project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 
@@ -17,7 +17,7 @@ from channels.auth import AuthMiddlewareStack
 from channels.sessions import SessionMiddlewareStack
 
 # Set Django settings module
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'reddit_clone.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'securethread_backend.settings')
 
 # Initialize Django
 django.setup()

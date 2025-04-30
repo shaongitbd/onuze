@@ -1,19 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Spinner from './Spinner'; // Assuming Spinner component exists
 import NotificationBadge from './NotificationBadge';
+import { PostFilterContext } from '../app/layout';
 
 export default function Navbar() {
     const { user, logout, loading, isAuthenticated } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
     const [searchQuery, setSearchQuery] = useState('');
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+    const { filter, setFilter } = useContext(PostFilterContext);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -265,27 +268,52 @@ export default function Navbar() {
                                     </Link>
                                 </>
                             )}
-                            <Link
-                                href="/"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-red-600 hover:bg-gray-50"
+                            <button
+                                onClick={() => {
+                                    setFilter('home');
+                                    router.push('/');
+                                    setIsMobileMenuOpen(false);
+                                }}
+                                className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-red-600 hover:bg-gray-50"
                             >
                                 Home
-                            </Link>
-                            <Link
-                                href="/popular"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-red-600 hover:bg-gray-50"
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setFilter('popular');
+                                    if (pathname !== '/') {
+                                        router.push('/');
+                                    }
+                                    setIsMobileMenuOpen(false);
+                                }}
+                                className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-red-600 hover:bg-gray-50"
                             >
                                 Popular
-                            </Link>
-                            <Link
-                                href="/all"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-red-600 hover:bg-gray-50"
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setFilter('new');
+                                    if (pathname !== '/') {
+                                        router.push('/');
+                                    }
+                                    setIsMobileMenuOpen(false);
+                                }}
+                                className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-red-600 hover:bg-gray-50"
+                            >
+                                New
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setFilter('all');
+                                    if (pathname !== '/') {
+                                        router.push('/');
+                                    }
+                                    setIsMobileMenuOpen(false);
+                                }}
+                                className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-red-600 hover:bg-gray-50"
                             >
                                 All
-                            </Link>
+                            </button>
                         </div>
                     </div>
                 )}

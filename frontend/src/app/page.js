@@ -1,18 +1,34 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useContext } from 'react';
 import Link from 'next/link';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import PostCard from '../components/PostCard';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../lib/auth';
 import { useInfinitePosts } from '../hooks/useInfiniteScroll';
+import { PostFilterContext } from './layout';
 
 export default function HomePage() {
   const [communities, setCommunities] = useState([]);
   const [communityError, setCommunityError] = useState(null);
   const [communityLoading, setCommunityLoading] = useState(true);
   const { user } = useAuth();
+  const { filter } = useContext(PostFilterContext);
+
+  // Add sort parameter based on filter
+  const getFilterParams = () => {
+    switch(filter) {
+      case 'popular':
+        return { sort: 'hot' };
+      case 'new':
+        return { sort: 'new' };
+      case 'all':
+        return { sort: 'top' };
+      default:
+        return {}; // Default home feed
+    }
+  };
 
   const {
     data: postsData,
@@ -22,9 +38,15 @@ export default function HomePage() {
     isError: isErrorPosts,
     error: postsError,
     isFetchingNextPage,
-  } = useInfinitePosts({}, {
+    refetch
+  } = useInfinitePosts(getFilterParams(), {
     refetchOnWindowFocus: false,
   });
+
+  // Refetch when filter changes
+  useEffect(() => {
+    refetch();
+  }, [filter, refetch]);
 
   useEffect(() => {
     async function fetchCommunities() {
@@ -71,6 +93,20 @@ export default function HomePage() {
     );
   }
 
+  // Get title based on filter
+  const getTitle = () => {
+    switch(filter) {
+      case 'popular':
+        return 'Popular Posts';
+      case 'new':
+        return 'New Posts';
+      case 'all':
+        return 'All Posts';
+      default:
+        return 'Home Feed';
+    }
+  };
+
   return (
     <div className="px-0 py-0">
       <div className="flex flex-col lg:flex-row gap-6">
@@ -80,7 +116,7 @@ export default function HomePage() {
             <svg className="w-6 h-6 text-gray-700 mr-2" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" />
             </svg>
-            <h1 className="text-2xl font-bold text-gray-900">Popular Posts</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{getTitle()}</h1>
           </div>
           
           {allPosts.length === 0 ? (
@@ -116,32 +152,25 @@ export default function HomePage() {
               }
               endMessage={
                 <p style={{ textAlign: 'center' }} className="text-gray-500 text-sm py-4">
-                  <b>Yay! You have seen it all</b>
+                  <b>You've seen all posts</b>
                 </p>
               }
             >
-            <div className="space-y-4">
+              <div className="space-y-4 px-4 lg:px-0">
                 {allPosts.map(post => (
-                <div key={post.id} className="mb-4 mx-4 lg:mx-0">
-                  <PostCard post={post} />
-                </div>
-              ))}
-            </div>
+                  <PostCard key={post.id} post={post} />
+                ))}
+              </div>
             </InfiniteScroll>
           )}
         </div>
         
-        {/* Sidebar */}
-        <div className="lg:w-72 flex-shrink-0">
-          {/* About section */}
+        {/* Right sidebar */}
+        <div className="w-full lg:w-4/12 lg:block">
+          {/* About */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
-            <div className="px-4 py-3 bg-gray-700 text-white">
-              <h2 className="text-base font-bold flex items-center">
-                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
-                </svg>
-                Welcome to Secure Thread
-              </h2>
+            <div className="px-4 py-3 bg-red-600 text-white">
+              <h2 className="text-base font-bold">About</h2>
             </div>
             <div className="p-4">
               <p className="text-sm text-gray-700 mb-4">
@@ -221,7 +250,7 @@ export default function HomePage() {
                 >
                   <span>View All Communities</span>
                   <svg className="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                 </Link>
               </div>

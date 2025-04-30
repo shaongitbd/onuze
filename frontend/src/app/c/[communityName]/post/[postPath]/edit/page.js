@@ -157,23 +157,11 @@ export default function EditPostPage() {
                 disabled={submitting}
               />
               <label htmlFor="is_nsfw" className="ml-2 block text-sm text-gray-700">
-                NSFW
+                
               </label>
             </div>
             
-            <div className="flex items-center">
-              <input
-                id="is_spoiler"
-                type="checkbox"
-                checked={isSpoiler}
-                onChange={(e) => setIsSpoiler(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                disabled={submitting}
-              />
-              <label htmlFor="is_spoiler" className="ml-2 block text-sm text-gray-700">
-                Spoiler
-              </label>
-            </div>
+           
           </div>
           
           <div className="flex justify-end space-x-3">

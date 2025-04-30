@@ -1097,15 +1097,15 @@ export default function PostDetailPage() {
   const canEdit = isOwner; // Only owner can edit content
 
   return (
-    <div className="p-4 max-w-7xl mx-auto">
-      <div className="flex flex-col lg:flex-row gap-6">
+    <div className="p-2 sm:p-4 max-w-7xl mx-auto">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
         {/* Main content - Increased width */}
-        <div className="lg:w-9/12">
+        <div className="lg:w-9/12 w-full">
           {/* Post */}
-          <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
-            <div className="flex">
-              {/* Left sidebar for votes */}
-              <div className="bg-gray-50 px-2 py-3 flex flex-col items-center justify-start gap-1">
+          <div className="bg-white shadow rounded-lg overflow-hidden mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row">
+              {/* Left sidebar for votes - horizontal on mobile, vertical on desktop */}
+              <div className="bg-gray-50 p-2 flex sm:flex-col items-center justify-center sm:justify-start gap-1 sm:px-2 sm:py-3">
                 <button 
                   onClick={() => handleVote('UP')}
                   className={`p-1 rounded-full hover:bg-gray-100 ${
@@ -1146,9 +1146,9 @@ export default function PostDetailPage() {
               </div>
 
               {/* Main content */}
-              <div className="flex-1 p-4">
+              <div className="flex-1 p-2 sm:p-4">
                 {/* Post metadata */}
-                <div className="flex items-center text-xs text-gray-500 mb-2">
+                <div className="flex flex-wrap items-center text-xs text-gray-500 mb-2">
                   {/* Community icon */}
                   <div className="w-5 h-5 rounded-full bg-gray-700 text-white flex items-center justify-center mr-1 text-xs font-bold">
                     {communityName?.charAt(0).toUpperCase() || 'C'}
@@ -1177,34 +1177,37 @@ export default function PostDetailPage() {
                   
                   <span>{formatDistanceToNow(new Date(post?.created_at || Date.now()), { addSuffix: true })}</span>
 
-                  {/* Pinned Icon */}
-                  {post?.is_pinned && (
-                    <span title="Pinned by moderator" className="ml-2 text-green-600 flex items-center">
-                      <PinIcon className="w-4 h-4 mr-1" />
-                      <span className="text-xs font-medium">Pinned</span>
-                    </span>
-                  )}
-                  {/* Locked Icon */}
-                  {post?.is_locked && (
-                     <span 
-                       title={post.locked_reason ? `Locked: ${post.locked_reason}` : "Locked by moderator"} 
-                       className="ml-2 text-yellow-600 flex items-center"
-                     >
-                      <LockClosedIcon className="w-4 h-4 mr-1" />
-                       <span className="text-xs font-medium">Locked</span>
-                    </span>
-                  )}
+                  {/* Post Status indicators with better mobile spacing */}
+                  <div className="flex flex-wrap items-center mt-1 sm:mt-0">
+                    {/* Pinned Icon */}
+                    {post?.is_pinned && (
+                      <span title="Pinned by moderator" className="ml-0 sm:ml-2 mr-2 text-green-600 flex items-center">
+                        <PinIcon className="w-4 h-4 mr-1" />
+                        <span className="text-xs font-medium">Pinned</span>
+                      </span>
+                    )}
+                    {/* Locked Icon */}
+                    {post?.is_locked && (
+                       <span 
+                         title={post.locked_reason ? `Locked: ${post.locked_reason}` : "Locked by moderator"} 
+                         className="ml-0 sm:ml-2 text-yellow-600 flex items-center"
+                       >
+                        <LockClosedIcon className="w-4 h-4 mr-1" />
+                         <span className="text-xs font-medium">Locked</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Post Content */}
-                <div className="px-4 pb-4">
+                <div className="px-1 sm:px-4 pb-4">
                   {post.title && (
-                    <h1 className="text-xl font-semibold mb-2 text-gray-800">
+                    <h1 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">
                       {post.title}
                     </h1>
                   )}
                   
-                  {/* Media Display Section */}
+                  {/* Media Display Section - Responsive adjustments */}
                   {post.media_display && post.media_display.length > 0 ? (
                     <div className="space-y-2 mb-4">
                       {post.media_display.map((mediaItem, index) => (
@@ -1213,13 +1216,13 @@ export default function PostDetailPage() {
                             <img 
                               src={mediaItem.media_url} 
                               alt={`Post media ${index + 1}`}
-                              className="max-h-[70vh] w-auto rounded-md object-contain"
+                              className="max-h-[50vh] sm:max-h-[70vh] w-auto rounded-md object-contain mx-auto"
                             />
                           ) : mediaItem.media_type === 'video' ? (
                             <video 
                               controls 
                               poster={mediaItem.thumbnail_url || undefined}
-                              className="max-h-[70vh] w-auto rounded-md bg-black"
+                              className="max-h-[50vh] sm:max-h-[70vh] w-auto rounded-md bg-black mx-auto"
                             >
                               <source src={mediaItem.media_url} type={`video/${mediaItem.media_url.split('.').pop() || 'mp4'}`} />
                               Your browser does not support the video tag.
@@ -1235,14 +1238,14 @@ export default function PostDetailPage() {
                   ) : post.content ? (
                     // Only show content if there's no media_display
                     <div 
-                      className="prose prose-sm max-w-none text-gray-700" 
+                      className="prose prose-sm max-w-none text-gray-700 text-sm sm:text-base break-words" 
                       dangerouslySetInnerHTML={{ __html: post.content }} 
                     />
                   ) : null}
                 </div>
                 
-                {/* Post actions */}
-                <div className="flex flex-wrap items-center mt-2 text-xs text-gray-500 gap-x-3 gap-y-1">
+                {/* Post actions - With better responsive layout */}
+                <div className="flex flex-wrap items-center mt-2 text-xs text-gray-500 gap-x-2 sm:gap-x-3 gap-y-2">
                   {/* Comments count */}
                   <div className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full cursor-pointer">
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
@@ -1255,20 +1258,20 @@ export default function PostDetailPage() {
                   <div className="relative" ref={shareMenuRef}>
                     <button 
                       onClick={() => setShowShareMenu(!showShareMenu)}
-                      className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full mr-2 text-gray-500 hover:text-red-600"
+                      className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600"
                     >
                       <ShareIcon className="w-4 h-4 mr-1" />
                       <span>Share</span>
                     </button>
                     
-                    {/* Share Popup Menu */}
+                    {/* Share Popup Menu - Adjusted for better mobile positioning */}
                     {showShareMenu && (
-                      <div className="absolute mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-20">
+                      <div className="absolute mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-20 right-0 sm:right-auto">
                         <button 
                           onClick={copyToClipboard}
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          <LinkIcon className="w-4 h-4 mr-2" /> {/* Changed icon */}
+                          <LinkIcon className="w-4 h-4 mr-2" />
                           Copy Link
                         </button>
                         <button 
@@ -1316,7 +1319,7 @@ export default function PostDetailPage() {
                     onClick={handleReport}
                     className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600"
                   >
-                    <FlagIcon className="w-4 h-4 mr-1" /> {/* Changed icon */}
+                    <FlagIcon className="w-4 h-4 mr-1" />
                     <span>Report</span>
                   </button>
                   
@@ -1327,9 +1330,9 @@ export default function PostDetailPage() {
                       <button 
                         onClick={handleDeletePost}
                         className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600"
-                      disabled={moderatorActionLoading} // Use moderator loading state
+                      disabled={moderatorActionLoading}
                     >
-                       <TrashIcon className="w-4 h-4 mr-1" /> {/* Changed icon */}
+                       <TrashIcon className="w-4 h-4 mr-1" />
                       <span>{moderatorActionLoading ? 'Deleting...' : 'Delete'}</span>
                       </button>
                   )}
@@ -1376,8 +1379,8 @@ export default function PostDetailPage() {
                           onClick={openLockModal}
                           className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-yellow-600"
                           disabled={moderatorActionLoading}
-                           title="Lock Post"
-                       >
+                          title="Lock Post"
+                        >
                           <LockClosedIcon className="w-4 h-4 mr-1" />
                           <span>{moderatorActionLoading ? 'Locking...' : 'Lock'}</span>
                         </button>
@@ -2225,7 +2228,7 @@ const CommentItem = ({
                       onClick={copyToClipboard}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      <LinkIcon className="w-4 h-4 mr-2" /> {/* Changed icon */}
+                      <LinkIcon className="w-4 h-4 mr-2" />
                       Copy Link
                     </button>
                     <button 

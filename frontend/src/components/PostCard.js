@@ -125,16 +125,7 @@ export default function PostCard({ post }) {
                             c/{currentPost.community?.name || 'unknown'}
                         </Link>
                         
-                        <span className="mx-1 text-gray-400">•</span>
-                        
-                        <span>Posted by</span>
-                        
-                        {/* User link */}
-                        <Link href={`/user/${currentPost.user?.username || '[deleted]'}`} className="ml-1 hover:underline">
-                            u/{currentPost.user?.username || '[deleted]'}
-                        </Link>
-                        
-                        <span className="mx-1 text-gray-400">•</span>
+                       
                         
                         <span>{formatDistanceToNow(new Date(currentPost.created_at || Date.now()), { addSuffix: true })}</span>
                         

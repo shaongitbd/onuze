@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { getSubreddits } from '@/lib/api';
 import Spinner from './Spinner';
@@ -12,10 +12,13 @@ import {
   SparklesIcon, 
   GlobeAltIcon 
 } from '@heroicons/react/24/outline';
+import { PostFilterContext } from '@/app/layout';
 
-export default function LeftSidebar() {
+export default function LeftSidebar({ onFilterChange }) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
+  const { filter } = useContext(PostFilterContext);
   const [communities, setCommunities] = useState([]);
   const [loadingCommunities, setLoadingCommunities] = useState(false);
   const [error, setError] = useState('');
@@ -47,11 +50,21 @@ export default function LeftSidebar() {
   }, [isAuthenticated, user]);
 
   const navItems = [
-    { name: 'Home', href: '/', icon: HomeIcon },
-    { name: 'Popular', href: '/popular', icon: FireIcon },
-    { name: 'New', href: '/new', icon: SparklesIcon },
-    { name: 'All', href: '/all', icon: GlobeAltIcon },
+    { name: 'Home', filter: 'home', icon: HomeIcon },
+    { name: 'Popular', filter: 'popular', icon: FireIcon },
+    { name: 'New', filter: 'new', icon: SparklesIcon },
+    { name: 'All', filter: 'all', icon: GlobeAltIcon },
   ];
+
+  const handleNavClick = (filterValue) => {
+    // Always update the filter state through the prop callback
+    onFilterChange(filterValue);
+    
+    // Only navigate if we're not already on the home page
+    if (pathname !== '/') {
+      router.push('/');
+    }
+  };
 
   return (
     <div className="space-y-4 sticky top-[68px]">
@@ -62,12 +75,14 @@ export default function LeftSidebar() {
         <nav>
           <ul className="space-y-1">
             {navItems.map(item => {
-              const isActive = pathname === item.href;
+              // Check if current item matches the active filter
+              const isActive = item.filter === filter;
+              
               return (
                 <li key={item.name}>
-                  <Link 
-                    href={item.href}
-                    className={`flex items-center px-3 py-2 text-base font-medium rounded-md transition-colors ${ 
+                  <button
+                    onClick={() => handleNavClick(item.filter)}
+                    className={`flex items-center w-full text-left px-3 py-2 text-base font-medium rounded-md transition-colors ${ 
                       isActive 
                         ? 'bg-gray-200 text-gray-900' 
                         : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
@@ -80,7 +95,7 @@ export default function LeftSidebar() {
                       aria-hidden="true" 
                     />
                     {item.name}
-                  </Link>
+                  </button>
                 </li>
               );
             })}

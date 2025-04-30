@@ -156,6 +156,8 @@ Our backend is developed using Django. It supports hundreds of endpoints with va
 
 ## Setup and Installation
 
+### Backend Setup
+
 1. Create a `.env` file in the backend folder with all values filled in:
 
 ```
@@ -214,3 +216,34 @@ pip install -r requirements.txt
 3. Run the application:
 ```
 daphne reddit_clone.asgi:application
+```
+
+### Frontend Setup
+
+1. Navigate to the frontend directory:
+```
+cd frontend
+```
+
+2. Create a `.env.local` file with the following configuration:
+```
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+3. Install dependencies:
+```
+npm install
+```
+
+4. Run the development server:
+```
+npm run dev
+```
+
+5. For production build:
+```
+npm run build
+npm start
+```
+
+The frontend will be available at `http://localhost:3000`

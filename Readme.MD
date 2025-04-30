@@ -1,6 +1,6 @@
 # SecureThread
 
-Welcome to the official SecureThread repository. This application is built by [shaongit](https://github.com/shaongit).
+Welcome to the official SecureThread repository. This application is built by [shaongitbd](https://github.com/shaongitbd). For any problem feel free to mail me at shaongit@gmail.com
 
 ## License
 

@@ -10,6 +10,8 @@ from security.models import AuditLog
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied
+import json
+import uuid
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -147,6 +149,9 @@ class CommentViewSet(viewsets.ModelViewSet):
             # Process @mentions in the comment content
             self.process_mentions(comment)
             
+            # Broadcast the new comment to all clients viewing the post
+            notify_new_comment(comment)
+            
             # Log comment creation
             AuditLog.log(
                 action='comment_create',
@@ -224,6 +229,9 @@ class CommentViewSet(viewsets.ModelViewSet):
                     'parent_id': str(comment.parent.id) if comment.parent else None
                 }
             )
+            
+            # Broadcast comment update to all clients connected to the post's WebSocket group
+            notify_comment_update(comment)
         except Exception as e:
             # Get the comment ID from the URL
             comment_id = self.kwargs.get('pk')
@@ -260,6 +268,9 @@ class CommentViewSet(viewsets.ModelViewSet):
             
             # Soft delete rather than hard delete
             instance.soft_delete()
+            
+            # Broadcast comment deletion to all clients connected to the post's WebSocket group
+            notify_comment_delete(instance.id, instance.post.id)
         except Exception as e:
             # Log failed comment deletion
             AuditLog.log(
@@ -361,3 +372,113 @@ class CommentViewSet(viewsets.ModelViewSet):
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
+
+def notify_new_comment(comment):
+    """Broadcast new comment to all clients connected to the post's WebSocket group."""
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+    from .serializers import CommentSerializer
+    import inspect
+    
+    print("=" * 60)
+    print(f"🔍 notify_new_comment called with comment ID: {comment.id} for post ID: {comment.post.id}")
+    print(f"🔍 Called from: {inspect.currentframe().f_back.f_code.co_name}")
+    print("=" * 60)
+    
+    try:
+        channel_layer = get_channel_layer()
+        
+        # Debug info about channel layer
+        print(f"📢 Channel layer type: {type(channel_layer).__name__}")
+        
+        # Serialize the comment
+        serializer = CommentSerializer(comment)
+        serialized_data = serializer.data
+        
+        # Critical fix: Convert UUID objects to strings
+        # Create a custom JSON encoder to handle UUID objects
+        class UUIDEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, uuid.UUID):
+                    # Convert UUID to string
+                    return str(obj)
+                return json.JSONEncoder.default(self, obj)
+        
+        # Serialize and then deserialize with the custom encoder to ensure all UUIDs are strings
+        serialized_data = json.loads(json.dumps(serialized_data, cls=UUIDEncoder))
+        
+        # Now get group name
+        group_name = f"comments_{comment.post.id}"
+        
+        print(f"📨 Sending WebSocket notification to group: {group_name}")
+        print(f"📄 Comment data size: {len(str(serialized_data))} characters")
+        print(f"📄 Comment data preview: {str(serialized_data)[:100]}...")
+        
+        # Prepare the message - CRITICAL: 'type' must match consumer method name
+        message = {
+            "type": "new_comment",  # Must match async method name in consumer
+            "comment_data": serialized_data
+        }
+        
+        print(f"💬 Message type: {message['type']}")
+        
+        # Check if there are clients in the group
+        # Note: This is not always possible with Redis, but we're adding debug info
+        print(f"📡 Checking for clients in group before sending...")
+        
+        # Send to the comments group for this post
+        print(f"📡 Sending to channel layer via group_send({group_name}, ...)")
+        async_to_sync(channel_layer.group_send)(group_name, message)
+        print(f"✅ WebSocket notification sent successfully to group: {group_name}")
+        print(f"✅ Post ID: {comment.post.id}, Comment ID: {comment.id}, User: {comment.user.username}")
+    except Exception as e:
+        print(f"❌ Error sending WebSocket notification: {e}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 60)
+
+def notify_comment_update(comment):
+    """Broadcast comment update to all clients connected to the post's WebSocket group."""
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+    
+    try:
+        channel_layer = get_channel_layer()
+        
+        # Send to the comments group for this post
+        async_to_sync(channel_layer.group_send)(
+            f"comments_{comment.post.id}",
+            {
+                "type": "comment_update",
+                "comment_id": str(comment.id),  # Ensure UUID is converted to string
+                "content": comment.content,
+                "is_edited": comment.is_edited
+            }
+        )
+        print(f"WebSocket comment update notification sent for comment {comment.id}")
+    except Exception as e:
+        print(f"Error sending WebSocket comment update notification: {e}")
+        import traceback
+        traceback.print_exc()
+
+def notify_comment_delete(comment_id, post_id):
+    """Broadcast comment deletion to all clients connected to the post's WebSocket group."""
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+    
+    try:
+        channel_layer = get_channel_layer()
+        
+        # Send to the comments group for this post
+        async_to_sync(channel_layer.group_send)(
+            f"comments_{post_id}",
+            {
+                "type": "comment_delete",
+                "comment_id": str(comment_id)  # Ensure UUID is converted to string
+            }
+        )
+        print(f"WebSocket comment delete notification sent for comment {comment_id}")
+    except Exception as e:
+        print(f"Error sending WebSocket comment delete notification: {e}")
+        import traceback
+        traceback.print_exc()

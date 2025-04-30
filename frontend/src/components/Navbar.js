@@ -153,6 +153,10 @@ export default function Navbar() {
                                     Create Post
                                 </Link>
 
+                                <Link href="/c/create" className="hidden md:block mr-2 md:mr-4 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                                    Create Community
+                                </Link>
+
                                 <NotificationBadge />
                                 
                                 {/* User menu */}

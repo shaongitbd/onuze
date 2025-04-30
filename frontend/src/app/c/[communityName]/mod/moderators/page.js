@@ -68,7 +68,7 @@ export default function ModeratorsPage() {
       setUsernameError(null);
       
       // First get the user ID by username
-      const userSearchResponse = await fetchAPI(`/users/?username=${username}`);
+      const userSearchResponse = await fetchAPI(`/user/?username=${username}`);
       if (!userSearchResponse.results || userSearchResponse.results.length === 0) {
         setUsernameError('User not found');
         return;

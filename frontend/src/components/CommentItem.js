@@ -207,7 +207,11 @@ function CommentItem({ comment, onCommentDeleted, communityPath, isModerator, on
       <div className="flex-1">
         {/* Comment header */}
         <div className="flex items-center mb-1">
-          <Link href={`/u/${comment.user?.username || 'deleted-user'}`} className="text-xs font-medium text-gray-900 hover:underline">
+          <Link 
+            href={`/user/${comment.user?.username || 'deleted-user'}`} 
+            className="text-xs font-medium text-gray-900 hover:underline"
+            passHref
+          >
             u/{comment.user?.username || '[deleted]'}
           </Link>
           {isUserBanned && (

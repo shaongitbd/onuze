@@ -32,7 +32,10 @@ from comments.consumers import CommentConsumer
 websocket_urlpatterns = [
     path('ws/notifications/', WebSocketSecurityMiddlewareStack(NotificationConsumer.as_asgi())),
     path('ws/posts/<uuid:post_id>/', WebSocketSecurityMiddlewareStack(PostConsumer.as_asgi())),
-    path('ws/comments/<uuid:post_id>/', WebSocketSecurityMiddlewareStack(CommentConsumer.as_asgi())),
+    # Use SessionMiddlewareStack for comments to allow anonymous access
+    path('ws/comments/<uuid:post_id>/', AllowedHostsOriginValidator(
+        SessionMiddlewareStack(CommentConsumer.as_asgi())
+    )),
 ]
 
 # Configure ASGI application

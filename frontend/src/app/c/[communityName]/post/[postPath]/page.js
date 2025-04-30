@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { 
   getPostByPath, getComments, createComment, deletePost, deleteComment, 
@@ -17,6 +17,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { LockClosedIcon, LockOpenIcon, MapPinIcon as PinIcon, TrashIcon, PencilIcon, FlagIcon, ShareIcon, LinkIcon } from '@heroicons/react/24/solid'; // Changed PinIcon to MapPinIcon
 import BanUserModal from '../../../../../components/BanUserModal'; // Import the new modal
 import ReportModal from '@/components/ReportModal';
+import notificationService from '@/lib/websocket'; // Import WebSocket service
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -63,6 +64,10 @@ export default function PostDetailPage() {
   // Add state for comment reporting
   const [reportContentType, setReportContentType] = useState(null);
   const [reportContentId, setReportContentId] = useState(null);
+
+  // Add WebSocket connection state
+  const [wsConnected, setWsConnected] = useState(false);
+  const commentSocketRef = useRef(null);
 
   // Refetch post data helper
   const refetchPostData = async () => {
@@ -399,17 +404,34 @@ export default function PostDetailPage() {
       setSubmittingComment(true);
       setCommentError('');
 
+      console.log('📤 Submitting new comment...');
       const newComment = await createComment({
         content: commentText,
         post: post.id,
         parent: ""
       });
+      console.log('✅ Comment created via API:', newComment);
 
-      // Add new comment to the list
-      setComments([newComment, ...comments]);
+      // When using WebSockets, we don't need to add the comment here manually
+      // since it will be delivered via WebSocket if the connection is active
+      // But as a fallback (if WebSocket isn't connected), we still add it directly
+      if (!wsConnected) {
+        console.log('📢 WebSocket not connected, manually adding comment to UI');
+        // Add new comment to the list only if WebSocket is not connected
+        setComments(prevComments => {
+          // Check if this comment was already added (edge case)
+          if (prevComments.some(c => c.id === newComment.id)) {
+            return prevComments;
+          }
+          return [newComment, ...prevComments];
+        });
+      } else {
+        console.log('📶 WebSocket connected - waiting for real-time update');
+      }
+      
       setCommentText(''); // Clear input
     } catch (err) {
-      console.error('Error creating comment:', err);
+      console.error('❌ Error creating comment:', err);
       setCommentError(err.message || 'Failed to post comment. Please try again.');
     } finally {
       setSubmittingComment(false);
@@ -507,24 +529,29 @@ export default function PostDetailPage() {
       try {
         await deleteComment(commentId);
         
-        // Remove the comment from the local state (recursively)
-        const removeCommentFromArray = (commentsArray, id) => {
-          return commentsArray.filter(comment => {
-            if (comment.id === id) {
-              return false; // remove this comment
-            }
-            
-            // Keep this comment but update its replies recursively
-            if (comment.replies && comment.replies.length > 0) {
-              comment.replies = removeCommentFromArray(comment.replies, id);
-            }
-            
-            return true;
-          });
-        };
+        // If WebSocket is not connected, update the UI manually
+        if (!wsConnected) {
+          // Remove the comment from the local state (recursively)
+          const removeCommentFromArray = (commentsArray, id) => {
+            return commentsArray.filter(comment => {
+              if (comment.id === id) {
+                return false; // remove this comment
+              }
+              
+              // Keep this comment but update its replies recursively
+              if (comment.replies && comment.replies.length > 0) {
+                comment.replies = removeCommentFromArray(comment.replies, id);
+              }
+              
+              return true;
+            });
+          };
+          
+          setComments(prevComments => removeCommentFromArray(prevComments, commentId));
+        }
         
-        setComments(prevComments => removeCommentFromArray(prevComments, commentId));
-        alert('Comment deleted successfully.');
+        // Show temporary success indicator (will be replaced by WebSocket data if connected)
+        console.log('Comment deleted successfully');
       } catch (err) {
         console.error('Error deleting comment:', err);
         alert(err.message || 'Failed to delete comment.'); // Show error to user
@@ -594,23 +621,29 @@ export default function PostDetailPage() {
       // Update comment in the backend
       await updateComment(commentId, { content: updatedContent });
       
-      // Update the comment in the local state
-      setComments(prevComments => 
-        prevComments.map(comment => 
-          comment.id === commentId 
-            ? { ...comment, content: updatedContent, isEditing: false } 
-            : comment
-        )
-      );
+      // If WebSocket is not connected, update the UI manually
+      if (!wsConnected) {
+        // Update the comment in the local state
+        setComments(prevComments => 
+          updateCommentInTree(prevComments, commentId, comment => ({
+            ...comment,
+            content: updatedContent,
+            isEditing: false,
+            is_edited: true
+          }))
+        );
+      }
+      
+      // Show temporary success indicator (will be replaced by WebSocket data if connected)
+      console.log('Comment updated successfully');
     } catch (err) {
       console.error('Error updating comment:', err);
       // Update error state in the specific comment
       setComments(prevComments => 
-        prevComments.map(comment => 
-          comment.id === commentId 
-            ? { ...comment, editError: err.message } 
-            : comment
-        )
+        updateCommentInTree(prevComments, commentId, comment => ({
+          ...comment,
+          editError: err.message || 'Failed to update comment'
+        }))
       );
     }
   };
@@ -806,6 +839,236 @@ export default function PostDetailPage() {
     setReportModalOpen(true);
   };
 
+  // Add WebSocket connection and event handling
+  useEffect(() => {
+    // Only connect if we have a post and it has an ID
+    if (post && post.id) {
+      // Create a new WebSocket connection for the post's comments
+      const connectToCommentSocket = () => {
+        console.log('⚠️ [Comment WebSocket] Creating independent connection - separate from notification system');
+        
+        // Determine WebSocket URL (ws or wss based on http/https)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        
+        // In development, use the backend server port (8000) instead of frontend port (3000)
+        let host = window.location.host;
+        
+        // Check if we're in development mode (localhost or similar)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          // Replace port 3000 with 8000 for development
+          host = window.location.hostname + ':8000';
+        }
+        
+        // Get JWT token for authentication if needed
+        // We still pass the token even though anonymous access is allowed
+        // This allows the backend to know who is connected for logging purposes
+        const token = localStorage.getItem('authToken');
+        
+        // Build WebSocket URL with optional token
+        let wsUrl = `${protocol}//${host}/ws/comments/${post.id}/`;
+        if (token) {
+          wsUrl += `?token=${encodeURIComponent(token)}`;
+        }
+        
+        console.log('🔌 [Comment WebSocket] Connecting to:', wsUrl);
+        
+        try {
+          // Create a dedicated WebSocket instance just for comments
+          // This is completely separate from the notification WebSocket
+          const socket = new WebSocket(wsUrl);
+          
+          socket.onopen = () => {
+            console.log('✅ [Comment WebSocket] Connected successfully!');
+            console.log(`✅ [Comment WebSocket] Ready to receive comments for post ID: ${post.id}`);
+            setWsConnected(true);
+            
+            // Send a ping to test the connection
+            try {
+              socket.send(JSON.stringify({ type: 'ping' }));
+              console.log('📤 [Comment WebSocket] Sent ping message');
+            } catch (err) {
+              console.error('❌ [Comment WebSocket] Error sending ping:', err);
+            }
+          };
+          
+          socket.onmessage = (event) => {
+            console.log('📩 [Comment WebSocket] Message received:', event.data);
+            
+            try {
+              const data = JSON.parse(event.data);
+              console.log('📨 [Comment WebSocket] Parsed message:', data);
+              
+              if (data.type === 'new_comment') {
+                console.log('🆕 [Comment WebSocket] New comment received:', data.comment_data);
+                console.log('🆕 [Comment WebSocket] Adding comment to UI...');
+                
+                // Add the new comment to our comments state
+                setComments(prevComments => {
+                  // Deep copy previous comments to avoid mutation
+                  const updatedComments = [...prevComments];
+                  
+                  // Only add if it's not already in the list
+                  if (!updatedComments.some(c => c.id === data.comment_data.id)) {
+                    console.log('🆕 [Comment WebSocket] Comment not in list, adding it');
+                    // Insert at the beginning for top-level comments or in the correct parent for replies
+                    if (data.comment_data.parent) {
+                      // It's a reply, find the parent and add to its replies
+                      return updateCommentInTree(updatedComments, data.comment_data.parent, 
+                        (comment) => {
+                          if (!comment.replies) comment.replies = [];
+                          comment.replies.unshift(data.comment_data);
+                          return comment;
+                        });
+                    } else {
+                      // It's a top-level comment, add to beginning
+                      return [data.comment_data, ...updatedComments];
+                    }
+                  } else {
+                    console.log('🆕 [Comment WebSocket] Comment already in list, skipping');
+                  }
+                  return updatedComments;
+                });
+              } 
+              // Check for other message formats that might be used instead
+              else if (data.type === 'comment' || (data.comment && !data.type)) {
+                console.log('🆕 Comment received via alternate format:', data.comment || data);
+                const commentData = data.comment || data;
+                
+                // Handle the comment data with the alternate format
+                setComments(prevComments => {
+                  const updatedComments = [...prevComments];
+                  
+                  if (!updatedComments.some(c => c.id === commentData.id)) {
+                    if (commentData.parent) {
+                      return updateCommentInTree(updatedComments, commentData.parent, 
+                        (comment) => {
+                          if (!comment.replies) comment.replies = [];
+                          comment.replies.unshift(commentData);
+                          return comment;
+                        });
+                    } else {
+                      return [commentData, ...updatedComments];
+                    }
+                  }
+                  return updatedComments;
+                });
+              }
+              else if (data.type === 'comment_update') {
+                console.log('🔄 Comment update received:', data);
+                // Update an existing comment
+                setComments(prevComments => 
+                  updateCommentInTree(prevComments, data.comment_id, 
+                    (comment) => ({
+                      ...comment,
+                      content: data.content,
+                      is_edited: data.is_edited
+                    })
+                  )
+                );
+              } 
+              else if (data.type === 'comment_delete') {
+                console.log('🗑️ Comment delete received:', data);
+                // Handle comment deletion
+                setComments(prevComments => {
+                  return prevComments.filter(comment => {
+                    // Filter out the deleted comment
+                    if (comment.id === data.comment_id) {
+                      return false;
+                    }
+                    
+                    // If it has replies, process them too
+                    if (comment.replies) {
+                      comment.replies = comment.replies.filter(reply => reply.id !== data.comment_id);
+                    }
+                    
+                    return true;
+                  });
+                });
+              }
+              else if (data.type === 'vote_update' && data.comment_id) {
+                console.log('🗳️ Comment vote update received:', data);
+                // Update vote counts for a comment
+                setComments(prevComments => 
+                  updateCommentInTree(prevComments, data.comment_id, 
+                    (comment) => ({
+                      ...comment,
+                      upvote_count: data.upvotes,
+                      downvote_count: data.downvotes,
+                      score: data.score
+                    })
+                  )
+                );
+              }
+              else if (data.type === 'pong' || data.type === 'ping') {
+                console.log('🏓 Ping/pong received:', data);
+              }
+              else {
+                console.log('⚠️ Unknown WebSocket message type:', data.type, data);
+              }
+            } catch (error) {
+              console.error('❌ [Comment WebSocket] Error processing message:', error, 'Raw data:', event.data);
+            }
+          };
+          
+          socket.onclose = (event) => {
+            console.log('🔌 [Comment WebSocket] Disconnected:', event.code, event.reason);
+            setWsConnected(false);
+            
+            // Attempt to reconnect after a delay
+            setTimeout(() => {
+              if (commentSocketRef.current === socket) {
+                console.log('🔄 [Comment WebSocket] Attempting to reconnect...');
+                connectToCommentSocket();
+              }
+            }, 3000);
+          };
+          
+          socket.onerror = (error) => {
+            console.error('❌ [Comment WebSocket] Error:', error);
+          };
+          
+          // Store the socket reference
+          commentSocketRef.current = socket;
+          
+          return socket;
+        } catch (error) {
+          console.error('❌ [Comment WebSocket] Failed to create connection:', error);
+          setWsConnected(false);
+          return null;
+        }
+      };
+      
+      // Connect to WebSocket
+      const socket = connectToCommentSocket();
+      
+      // Clean up function
+      return () => {
+        console.log('🧹 [Comment WebSocket] Cleaning up connection');
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.close();
+        }
+        commentSocketRef.current = null;
+        setWsConnected(false);
+      };
+    }
+  }, [post?.id]); // Only reconnect if the post ID changes
+
+  // Add this function to the component:
+  const sendTestMessage = () => {
+    if (commentSocketRef.current && commentSocketRef.current.readyState === WebSocket.OPEN) {
+      const testMessage = {
+        type: 'echo',
+        message: 'Test message',
+        timestamp: new Date().toISOString()
+      };
+      console.log('📤 [Comment WebSocket] Sending test message:', testMessage);
+      commentSocketRef.current.send(JSON.stringify(testMessage));
+    } else {
+      console.error('❌ [Comment WebSocket] Cannot send test: socket not connected');
+      alert('WebSocket not connected. Please wait for connection or refresh the page.');
+    }
+  };
+
   if (loading || isLoading || (postPath && !post && !error)) { // Added condition for initial load state
     return (
       <div className="p-4 flex justify-center items-center min-h-[300px]">
@@ -832,7 +1095,6 @@ export default function PostDetailPage() {
   // Check if user owns the post
   const isOwner = isAuthenticated && user && post?.user?.id === user.id;
   const canEdit = isOwner; // Only owner can edit content
-  const editUrl = `/c/${communityName}/post/${postPath}/edit`;
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
@@ -902,7 +1164,7 @@ export default function PostDetailPage() {
                   <span>Posted by</span>
                   
                   {/* User link */}
-                  <Link href={`/users/${post?.user?.username || '[deleted]'}`} className="ml-1 hover:underline">
+                  <Link href={`/user/${post?.user?.username || '[deleted]'}`} className="ml-1 hover:underline">
                     u/{post?.user?.username || '[deleted]'}
                   </Link>
                   {isUserBanned ? (
@@ -1058,14 +1320,7 @@ export default function PostDetailPage() {
                     <span>Report</span>
                   </button>
                   
-                  {/* Edit button (Owner only) */}
-                  {canEdit && (
-                      <Link href={editUrl} 
-                      className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full text-gray-500 hover:text-red-600">
-                       <PencilIcon className="w-4 h-4 mr-1" /> {/* Changed icon */}
-                        <span>Edit</span>
-                      </Link>
-                  )}
+                
                       
                   {/* Delete button (Owner or Moderator) */}
                   {(isOwner || isModerator) && (
@@ -1555,6 +1810,8 @@ export default function PostDetailPage() {
         username={banTargetUser}
         isLoading={banLoading}
       />
+
+     
     </div>
   );
 } 
@@ -1715,7 +1972,11 @@ const CommentItem = ({
             )}
           </div>
           
-          <span className="font-medium text-gray-800">{comment?.user?.username ?? '[deleted]'}</span>
+          <span className="font-medium text-gray-800">
+            <Link href={`/user/${comment?.user?.username ?? 'deleted-user'}`} className="hover:underline">
+              {comment?.user?.username ?? '[deleted]'}
+            </Link>
+          </span>
           
           {/* Show banned indicator if user is banned */}
           {commentBanStatus[comment.id] && (

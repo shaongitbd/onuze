@@ -137,6 +137,21 @@ export default function PostCard({ post }) {
                         <span className="mx-1 text-gray-400">•</span>
                         
                         <span>{formatDistanceToNow(new Date(currentPost.created_at || Date.now()), { addSuffix: true })}</span>
+                        
+                        {/* Pinned post indicator */}
+                        {currentPost.is_pinned && (
+                            <>
+                                <span className="mx-1 text-gray-400">•</span>
+                                <span className="text-green-600 flex items-center" title="Pinned by moderator">
+                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M5 5a2 2 0 012-2h6a2 2 0 012 2v2a2 2 0 01-2 2H7a2 2 0 01-2-2V5z" />
+                                        <path d="M10 12a2 2 0 100 4 2 2 0 000-4z" />
+                                        <path fillRule="evenodd" d="M10 10a1 1 0 100-2V5.5a.5.5 0 01.5-.5h4a.5.5 0 01.5.5v4a.5.5 0 01-.5.5H10z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="font-medium">Pinned</span>
+                                </span>
+                            </>
+                        )}
                     </div>
                     
                     {/* Post title */}
@@ -210,13 +225,7 @@ export default function PostCard({ post }) {
                             <span>Share</span>
                         </button>
                         
-                        {/* Save button */}
-                        <button className="flex items-center hover:bg-gray-100 px-2 py-1 rounded-full">
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                            </svg>
-                            <span>Save</span>
-                        </button>
+                        
                     </div>
                 </div>
             </div>

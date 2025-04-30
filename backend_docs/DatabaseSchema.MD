@@ -1,4 +1,4 @@
-# Reddit Clone Database Schema
+# Secure Thread Database Schema
 
 ## Core Tables
 

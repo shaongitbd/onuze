@@ -43,4 +43,4 @@ community_report_patterns = [
 urlpatterns = [
     path('', include(router.urls)),
     *community_report_patterns
-] 
+]

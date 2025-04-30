@@ -40,6 +40,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from posts.models import Post
 from comments.models import Comment
 from communities.models import CommunityMember
+from djoser.conf import settings as djoser_settings
+from djoser.utils import decode_uid
+from django.contrib.auth.tokens import default_token_generator
+from django.urls import reverse
+from django.shortcuts import redirect
 
 User = get_user_model()
 
@@ -290,7 +295,7 @@ class UserViewSet(viewsets.ModelViewSet):
         # Generate a QR code URI
         uri = totp.provisioning_uri(
             name=user.email,
-            issuer_name="Reddit Clone"
+            issuer_name="Secure Thread"
         )
         
         # Generate a QR code image
@@ -630,6 +635,359 @@ class UserBlockViewSet(viewsets.ModelViewSet):
     
     def get_client_ip(self, request):
         """Get client IP address from request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class PasswordResetConfirmView(generics.GenericAPIView):
+    """
+    Backend endpoint for confirming password reset.
+    Processes the reset and then redirects to a frontend success page.
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request, uid, token):
+        try:
+            user_id = decode_uid(uid)
+            user = User.objects.get(pk=user_id)
+            if default_token_generator.check_token(user, token):
+                # Token is valid - set a session variable to allow password reset
+                request.session['password_reset_uid'] = uid
+                request.session['password_reset_token'] = token
+                
+                # Log the valid token access
+                AuditLog.log(
+                    action='password_reset_token_valid',
+                    entity_type='user',
+                    entity_id=user.id,
+                    ip_address=self.get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    status='success'
+                )
+                
+                # Redirect to frontend with success parameter
+                frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+                return redirect(f"{frontend_url}/password-reset?uid={uid}&token={token}&status=valid")
+            else:
+                # Invalid token
+                AuditLog.log(
+                    action='password_reset_token_invalid',
+                    entity_type='user',
+                    entity_id=user.id,
+                    ip_address=self.get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    status='failed',
+                    details={'error': 'Invalid token'}
+                )
+                
+                # Redirect to frontend with error parameter
+                frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+                return redirect(f"{frontend_url}/password-reset?status=invalid&error=invalid_token")
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+            # Log the failure
+            AuditLog.log(
+                action='password_reset_invalid_uid',
+                entity_type='user',
+                ip_address=self.get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                status='failed',
+                details={'error': 'Invalid UID'}
+            )
+            
+            # Redirect to frontend with error parameter
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+            return redirect(f"{frontend_url}/password-reset-error?error=invalid_request")
+    
+    def post(self, request, uid, token):
+        try:
+            user_id = decode_uid(uid)
+            user = User.objects.get(pk=user_id)
+            
+            if default_token_generator.check_token(user, token):
+                # Get password from the request
+                new_password = request.data.get('new_password')
+                confirm_password = request.data.get('confirm_password')
+                
+                if not new_password or not confirm_password:
+                    return Response(
+                        {'detail': 'Both password fields are required'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                if new_password != confirm_password:
+                    return Response(
+                        {'detail': 'Passwords do not match'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Set the new password
+                user.set_password(new_password)
+                user.save(update_fields=['password'])
+                
+                # Log the password reset
+                AuditLog.log(
+                    action='password_reset_successful',
+                    entity_type='user',
+                    entity_id=user.id,
+                    ip_address=self.get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    status='success'
+                )
+                
+                # Return success response
+                return Response(
+                    {'detail': 'Password has been reset successfully'}, 
+                    status=status.HTTP_200_OK
+                )
+            else:
+                # Invalid token
+                AuditLog.log(
+                    action='password_reset_token_invalid',
+                    entity_type='user',
+                    entity_id=user.id,
+                    ip_address=self.get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    status='failed',
+                    details={'error': 'Invalid token'}
+                )
+                
+                return Response(
+                    {'detail': 'Invalid token'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+            # Log the failure
+            AuditLog.log(
+                action='password_reset_invalid_uid',
+                entity_type='user',
+                ip_address=self.get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                status='failed',
+                details={'error': 'Invalid UID'}
+            )
+            
+            return Response(
+                {'detail': 'Invalid reset request'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    def get_client_ip(self, request):
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class UsernameResetConfirmView(generics.GenericAPIView):
+    """
+    Backend endpoint for confirming username reset.
+    Processes the reset and then redirects to a frontend success page.
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request, uid, token):
+        try:
+            user_id = decode_uid(uid)
+            user = User.objects.get(pk=user_id)
+            if default_token_generator.check_token(user, token):
+                # Token is valid - set a session variable to allow username reset
+                request.session['username_reset_uid'] = uid
+                request.session['username_reset_token'] = token
+                
+                # Log the valid token access
+                AuditLog.log(
+                    action='username_reset_token_valid',
+                    entity_type='user',
+                    entity_id=user.id,
+                    ip_address=self.get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    status='success'
+                )
+                
+                # Redirect to frontend with success parameter
+                frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+                return redirect(f"{frontend_url}/username-reset-set-new?uid={uid}&token={token}&status=valid")
+            else:
+                # Invalid token
+                AuditLog.log(
+                    action='username_reset_token_invalid',
+                    entity_type='user',
+                    entity_id=user.id,
+                    ip_address=self.get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    status='failed',
+                    details={'error': 'Invalid token'}
+                )
+                
+                # Redirect to frontend with error parameter
+                frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+                return redirect(f"{frontend_url}/username-reset-error?error=invalid_token")
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+            # Log the failure
+            AuditLog.log(
+                action='username_reset_invalid_uid',
+                entity_type='user',
+                ip_address=self.get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                status='failed',
+                details={'error': 'Invalid UID'}
+            )
+            
+            # Redirect to frontend with error parameter
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+            return redirect(f"{frontend_url}/username-reset-error?error=invalid_request")
+    
+    def post(self, request, uid, token):
+        try:
+            user_id = decode_uid(uid)
+            user = User.objects.get(pk=user_id)
+            
+            if default_token_generator.check_token(user, token):
+                # Get new username from the request
+                new_username = request.data.get('new_username')
+                
+                if not new_username:
+                    return Response(
+                        {'detail': 'New username is required'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Check if username already exists
+                if User.objects.filter(username=new_username).exclude(pk=user.pk).exists():
+                    return Response(
+                        {'detail': 'This username is already taken'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Update the username
+                user.username = new_username
+                user.save(update_fields=['username'])
+                
+                # Log the username reset
+                AuditLog.log(
+                    action='username_reset_successful',
+                    entity_type='user',
+                    entity_id=user.id,
+                    ip_address=self.get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    status='success'
+                )
+                
+                # Return success response
+                return Response(
+                    {'detail': 'Username has been reset successfully'}, 
+                    status=status.HTTP_200_OK
+                )
+            else:
+                # Invalid token
+                AuditLog.log(
+                    action='username_reset_token_invalid',
+                    entity_type='user',
+                    entity_id=user.id,
+                    ip_address=self.get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    status='failed',
+                    details={'error': 'Invalid token'}
+                )
+                
+                return Response(
+                    {'detail': 'Invalid token'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+            # Log the failure
+            AuditLog.log(
+                action='username_reset_invalid_uid',
+                entity_type='user',
+                ip_address=self.get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                status='failed',
+                details={'error': 'Invalid UID'}
+            )
+            
+            return Response(
+                {'detail': 'Invalid reset request'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    def get_client_ip(self, request):
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+
+
+class AccountActivationView(generics.GenericAPIView):
+    """
+    Backend endpoint for account activation.
+    Processes the activation and then redirects to a frontend success page.
+    """
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request, uid, token):
+        try:
+            user_id = decode_uid(uid)
+            user = User.objects.get(pk=user_id)
+            if default_token_generator.check_token(user, token):
+                # Activate the user account
+                user.is_active = True
+                user.is_verified = True
+                user.save(update_fields=['is_active', 'is_verified'])
+
+                print(user.is_active)
+                
+                # Log the account activation
+                AuditLog.log(
+                    action='account_activation_successful',
+                    entity_type='user',
+                    entity_id=user.id,
+                    ip_address=self.get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    status='success'
+                )
+                
+                # Redirect to frontend with success parameter
+                frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+                return redirect(f"{frontend_url}/activation?status=success")
+            else:
+                # Invalid token
+                AuditLog.log(
+                    action='account_activation_token_invalid',
+                    entity_type='user',
+                    entity_id=user.id,
+                    ip_address=self.get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    status='failed',
+                    details={'error': 'Invalid token'}
+                )
+                
+                # Redirect to frontend with error parameter
+                frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+                return redirect(f"{frontend_url}/activation?status=error&error=invalid_token")
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+            # Log the failure
+            AuditLog.log(
+                action='account_activation_invalid_uid',
+                entity_type='user',
+                ip_address=self.get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                status='failed',
+                details={'error': 'Invalid UID'}
+            )
+            
+            # Redirect to frontend with error parameter
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+            return redirect(f"{frontend_url}/activation-error?error=invalid_request")
+    
+    def get_client_ip(self, request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
             ip = x_forwarded_for.split(',')[0]

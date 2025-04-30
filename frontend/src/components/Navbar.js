@@ -27,25 +27,19 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="bg-white shadow-md sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16">
-                    <div className="flex items-center">
-                        <div className="flex-shrink-0 mr-4">
-                            <Link href="/" className="text-2xl font-bold text-red-600 hover:text-red-700 transition-colors">
-                                RedditClone
-                            </Link>
-                        </div>
-                        <div className="hidden md:block ml-4">
-                            <Link href="/r" className="text-gray-500 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium">
-                                Communities
-                            </Link>
-                        </div>
+        <nav className="bg-white shadow-md sticky top-0 z-50 border-b border-gray-200">
+            <div className="max-w-[1670px] mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-12 h-14 items-center">
+                    {/* Left section */}
+                    <div className="col-span-3">
+                        <Link href="/" className="text-2xl font-bold text-red-600 hover:text-red-700 transition-colors">
+                            RedditClone
+                        </Link>
                     </div>
                     
-                    {/* Search Bar */}
-                    <div className="flex-1 max-w-md mx-4 hidden sm:flex">
-                        <form onSubmit={handleSearch} className="w-full">
+                    {/* Center - Search Bar */}
+                    <div className="col-span-6 hidden sm:block">
+                        <form onSubmit={handleSearch} className="w-full max-w-md mx-auto">
                             <div className="relative">
                                 <input
                                     type="text"
@@ -63,20 +57,25 @@ export default function Navbar() {
                         </form>
                     </div>
                     
-                    {/* Small screen search icon */}
-                    <Link href="/search" className="sm:hidden mr-4 text-red-500 hover:text-red-600 transition-colors">
-                        <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                        </svg>
-                    </Link>
-                    
-                    <div className="flex items-center">
+                    {/* Right section */}
+                    <div className="col-span-3 sm:col-span-3 flex items-center justify-end">
+                        {/* Small screen search icon */}
+                        <Link href="/search" className="sm:hidden mr-4 text-red-500 hover:text-red-600 transition-colors">
+                            <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                            </svg>
+                        </Link>
+                        
                         {loading ? (
                             <Spinner />
                         ) : isAuthenticated ? (
                             <div className="flex items-center">
                                 <Link href="/submit" className="mr-4 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                                     Create Post
+                                </Link>
+
+                                <Link href="/c/create" className="mr-4 bg-blue-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                                    Create Community
                                 </Link>
                                 
                                 {/* Notification Badge */}

@@ -95,11 +95,12 @@ class BanAppealSerializer(serializers.ModelSerializer):
     user = UserBriefSerializer(read_only=True)
     community = CommunitySerializer(read_only=True)
     reviewed_by = UserBriefSerializer(read_only=True)
+    community_id = serializers.UUIDField(write_only=True, required=False)
     
     class Meta:
         model = BanAppeal
         fields = [
-            'id', 'user', 'appeal_type', 'community', 'reason', 'evidence',
+            'id', 'user', 'appeal_type', 'community', 'community_id', 'reason', 'evidence',
             'status', 'created_at', 'reviewed_at', 'reviewed_by',
             'reviewer_notes', 'response_to_user', 'original_ban_reason',
             'original_banned_until'
@@ -116,7 +117,7 @@ class BanAppealSerializer(serializers.ModelSerializer):
         # Populate ban details based on user's current ban status
         user = validated_data['user']
         appeal_type = validated_data.get('appeal_type')
-        community_id = validated_data.get('community_id') # Assumes community_id is passed for community bans
+        community_id = validated_data.pop('community_id', None)  # Get and remove community_id from validated_data
 
         if appeal_type == BanAppeal.SITE_BAN:
             if user.is_banned:

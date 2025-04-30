@@ -4,7 +4,6 @@ from channels.db import database_sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from .models import Post
-from users.models import Activity
 
 
 class PostConsumer(AsyncWebsocketConsumer):

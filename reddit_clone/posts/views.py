@@ -82,6 +82,15 @@ class PostViewSet(viewsets.ModelViewSet):
         if flair_id:
             queryset = queryset.filter(flair__id=flair_id)
         
+        # Filter by pinned status
+        is_pinned = self.request.query_params.get('is_pinned', None)
+        if is_pinned is not None:
+            # More robust conversion to boolean
+            is_pinned_bool = is_pinned.lower() in ('true', 't', 'yes', 'y', '1')
+            # Print debug info to server logs
+            print(f"Filtering by is_pinned: {is_pinned}, converted to: {is_pinned_bool}")
+            queryset = queryset.filter(is_pinned=is_pinned_bool)
+        
         # Time-based filtering
         time_filter = self.request.query_params.get('time', None)
         if time_filter:
@@ -444,6 +453,32 @@ class PostViewSet(viewsets.ModelViewSet):
         )
         
         return Response({"detail": "Post unpinned successfully."})
+    
+    @action(detail=False, methods=['get'])
+    def pinned(self, request):
+        """
+        Get all pinned posts, optionally filtered by community.
+        Example usage: /api/v1/posts/pinned/?community_path=example
+        """
+        community_path = request.query_params.get('community_path', None)
+        queryset = Post.objects.filter(is_deleted=False, is_pinned=True)
+        
+        if community_path:
+            queryset = queryset.filter(community__path=community_path)
+        
+        queryset = queryset.order_by('-created_at')
+        
+        # Log the count for debugging
+        count = queryset.count()
+        print(f"Found {count} pinned posts" + (f" for community '{community_path}'" if community_path else ""))
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
     
     def get_client_ip(self, request):
         """Get client IP address from request."""

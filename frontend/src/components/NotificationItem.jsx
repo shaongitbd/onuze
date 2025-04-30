@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { markNotificationAsRead } from '@/lib/api';
+import notificationService from '@/lib/websocket';
 
-const NotificationItem = ({ notification, onStatusChange }) => {
+const NotificationItem = ({ notification, onStatusChange, isConnected = false }) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   
@@ -24,7 +25,14 @@ const NotificationItem = ({ notification, onStatusChange }) => {
       if (!is_read) {
         setIsLoading(true);
         try {
+          // Call REST API for marking as read (for compatibility and fallback)
           await markNotificationAsRead(id);
+          
+          // Also mark as read via WebSocket for real-time sync if connected
+          if (isConnected) {
+            notificationService.markAsRead(id);
+          }
+          
           // Update parent component's state
           onStatusChange && onStatusChange(id, true);
         } catch (error) {

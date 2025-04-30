@@ -545,7 +545,7 @@ class CommunityBanAppealDetailView(RetrieveModelMixin, GenericViewSet):
         )
         
         return Response(self.get_serializer(ban_appeal).data)
-    
+
     def can_review_appeal(self, user, appeal):
         """Check if a user has permission to review a specific appeal."""
         if user.is_staff:
@@ -553,7 +553,7 @@ class CommunityBanAppealDetailView(RetrieveModelMixin, GenericViewSet):
         if appeal.appeal_type == BanAppeal.COMMUNITY_BAN and appeal.community:
             return CommunityModerator.objects.filter(user=user, community=appeal.community).exists()
         return False
-    
+        
     def get_client_ip(self, request):
         """Get client IP address from request."""
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')

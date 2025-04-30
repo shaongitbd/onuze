@@ -55,7 +55,7 @@ export default function CommentForm({ postId, parentId, postPath, onCommentAdded
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to post comment');
+        throw new Error(errorData.detail || errorData.errors.detail ||'Failed to post comment');
       }
       
       const newComment = await response.json();

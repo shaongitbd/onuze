@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { fetchAPI } from '../../../../../lib/api';
+import { fetchAPI, uploadImage } from '../../../../../lib/api';
 import Spinner from '../../../../../components/Spinner';
 
 export default function EditCommunityPage() {
@@ -57,9 +57,14 @@ export default function EditCommunityPage() {
   const handleFileChange = (e) => {
     const { name, files } = e.target;
     if (files && files[0]) {
+      // Create a preview URL for the selected file
+      const previewUrl = URL.createObjectURL(files[0]);
+      
       setFormData(prev => ({
         ...prev,
-        [name]: files[0]
+        [name]: files[0],
+        // Update the current_icon or current_banner with the preview URL
+        [name === 'icon_image' ? 'current_icon' : 'current_banner']: previewUrl
       }));
     }
   };
@@ -78,62 +83,32 @@ export default function EditCommunityPage() {
       };
 
       // Update community details
-      await fetchAPI(`/communities/${community.id}/`, {
+      await fetchAPI(`/communities/${community.path}/`, {
         method: 'PATCH',
         body: JSON.stringify(formPayload)
       });
 
       // Handle image uploads if needed
       if (formData.icon_image) {
-        const formDataObj = new FormData();
-        formDataObj.append('image', formData.icon_image);
-        formDataObj.append('type', 'community');
-        
-        const imageResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'}/uploads/images/`, {
-          method: 'POST',
-          body: formDataObj,
-          headers: {
-            'Authorization': `JWT ${localStorage.getItem('access_token')}`
-          }
-        });
-        
-        if (!imageResponse.ok) {
-          throw new Error('Failed to upload icon image');
+        const uploadResult = await uploadImage(formData.icon_image, 'community');
+        if (uploadResult && uploadResult.url) {
+          // Update the community with the new icon
+          await fetchAPI(`/communities/${community.path}/`, {
+            method: 'PATCH',
+            body: JSON.stringify({ icon_image: uploadResult.url })
+          });
         }
-        
-        const imageData = await imageResponse.json();
-        
-        // Update the community with the new icon
-        await fetchAPI(`/communities/${community.id}/`, {
-          method: 'PATCH',
-          body: JSON.stringify({ icon_image: imageData.url })
-        });
       }
 
       if (formData.banner_image) {
-        const formDataObj = new FormData();
-        formDataObj.append('image', formData.banner_image);
-        formDataObj.append('type', 'community');
-        
-        const imageResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'}/uploads/images/`, {
-          method: 'POST',
-          body: formDataObj,
-          headers: {
-            'Authorization': `JWT ${localStorage.getItem('access_token')}`
-          }
-        });
-        
-        if (!imageResponse.ok) {
-          throw new Error('Failed to upload banner image');
+        const uploadResult = await uploadImage(formData.banner_image, 'community');
+        if (uploadResult && uploadResult.url) {
+          // Update the community with the new banner
+          await fetchAPI(`/communities/${community.path}/`, {
+            method: 'PATCH',
+            body: JSON.stringify({ banner_image: uploadResult.url })
+          });
         }
-        
-        const imageData = await imageResponse.json();
-        
-        // Update the community with the new banner
-        await fetchAPI(`/communities/${community.id}/`, {
-          method: 'PATCH',
-          body: JSON.stringify({ banner_image: imageData.url })
-        });
       }
 
       // Navigate back to community page after successful update

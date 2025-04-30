@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import LeftSidebar from "@/components/LeftSidebar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import WebSocketProvider from "@/components/WebSocketProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,15 +30,17 @@ export default function RootLayout({ children }) {
       <body className={`${inter.className} bg-gray-100`}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <Navbar />
-            <div className="flex max-w-[1670px] mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-              <aside className="w-72 hidden lg:block flex-shrink-0 pr-6">
-                <LeftSidebar />
-              </aside>
-              <main className="flex-1 min-w-0">
-                {children}
-              </main>
-            </div>
+            <WebSocketProvider>
+              <Navbar />
+              <div className="flex max-w-[1670px] mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+                <aside className="w-72 hidden lg:block flex-shrink-0 pr-6">
+                  <LeftSidebar />
+                </aside>
+                <main className="flex-1 min-w-0">
+                  {children}
+                </main>
+              </div>
+            </WebSocketProvider>
           </AuthProvider>
         </QueryClientProvider>
       </body>

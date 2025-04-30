@@ -13,13 +13,16 @@ export default function SearchPage() {
   const searchParams = useSearchParams();
   const queryParam = searchParams.get('q') || '';
   const typeParam = searchParams.get('type') || 'all';
+  const sortParam = searchParams.get('sort') || 'relevant';
+  const pageParam = parseInt(searchParams.get('page'), 10) || 1;
 
   const [searchQuery, setSearchQuery] = useState(queryParam);
   const [searchType, setSearchType] = useState(typeParam);
+  const [sortBy, setSortBy] = useState(sortParam);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(pageParam);
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
 
@@ -27,38 +30,76 @@ export default function SearchPage() {
     // Update form state when URL params change
     setSearchQuery(queryParam);
     setSearchType(typeParam);
+    setSortBy(sortParam);
+    setPage(pageParam);
     
     // Search when URL params change
     if (queryParam) {
-      handleSearch(queryParam, typeParam, 1);
+      // Only add page if it's not the default first page
+      const params = { 
+        sort: sortParam
+      };
+      
+      if (pageParam > 1) {
+        params.page = pageParam;
+      }
+      
+      handleSearch(queryParam, typeParam, params);
     }
-  }, [queryParam, typeParam]);
+  }, [queryParam, typeParam, sortParam, pageParam]);
 
-  const handleSearch = async (query, type, pageNumber) => {
+  const handleSearch = async (query, type, params = {}) => {
     if (!query) return;
     
     try {
       setLoading(true);
       setError(null);
       
-      const data = await searchContent(
-        query, 
-        type === 'all' ? null : type, 
-        { page: pageNumber, limit: 10 }
-      );
+      const data = await searchContent(query, type === 'all' ? null : type, params);
       
-      if (data.results) {
-        setResults(data.results);
-        setTotalResults(data.count || 0);
-        setTotalPages(Math.ceil((data.count || 0) / 10));
+      // Process the result based on the API's actual response format
+      let combinedResults = [];
+      
+      // For type-specific searches, just use that type's results
+      if (type && type !== 'all') {
+        switch (type) {
+          case 'post':
+            combinedResults = (data.posts || []).map(item => ({ ...item, type: 'post' }));
+            break;
+          case 'comment':
+            combinedResults = (data.comments || []).map(item => ({ ...item, type: 'comment' }));
+            break;
+          case 'community':
+            combinedResults = (data.communities || []).map(item => ({ ...item, type: 'community' }));
+            break;
+          case 'user':
+            combinedResults = (data.users || []).map(item => ({ ...item, type: 'user' }));
+            break;
+          default:
+            combinedResults = [];
+        }
       } else {
-        // Handle potential non-paginated response
-        setResults(data || []);
-        setTotalResults(data.length || 0);
-        setTotalPages(1);
+        // For "all" searches, combine all result types with type markers
+        const postResults = (data.posts || []).map(item => ({ ...item, type: 'post' }));
+        const commentResults = (data.comments || []).map(item => ({ ...item, type: 'comment' }));
+        const communityResults = (data.communities || []).map(item => ({ ...item, type: 'community' }));
+        const userResults = (data.users || []).map(item => ({ ...item, type: 'user' }));
+        
+        combinedResults = [
+          ...postResults,
+          ...commentResults,
+          ...communityResults,
+          ...userResults
+        ];
       }
       
-      setPage(pageNumber);
+      setResults(combinedResults);
+      setTotalResults(data.total_results || 0);
+      
+      // Calculate total pages assuming 10 results per page
+      const resultsPerPage = 10;
+      setTotalPages(Math.ceil((data.total_results || 0) / resultsPerPage));
+      
     } catch (err) {
       console.error('Search error:', err);
       setError('Failed to perform search. Please try again.');
@@ -75,16 +116,29 @@ export default function SearchPage() {
     const params = new URLSearchParams();
     params.set('q', searchQuery);
     if (searchType !== 'all') params.set('type', searchType);
+    if (sortBy !== 'relevant') params.set('sort', sortBy);
+    // Don't set page=1 explicitly as it's the default
     
     router.push(`/search?${params.toString()}`);
   };
 
   const handlePageChange = (newPage) => {
-    handleSearch(searchQuery, searchType, newPage);
-    // Optional: Update URL with page number
+    // Update URL with page number
     const params = new URLSearchParams(searchParams);
     params.set('page', newPage);
     router.push(`/search?${params.toString()}`, { scroll: false });
+  };
+
+  const handleSortChange = (e) => {
+    const newSort = e.target.value;
+    setSortBy(newSort);
+    
+    // Update URL with sort parameter
+    const params = new URLSearchParams(searchParams);
+    params.set('sort', newSort);
+    // Reset to page 1 on sort change (by removing the page parameter)
+    params.delete('page');
+    router.push(`/search?${params.toString()}`);
   };
 
   // Render a search result based on its type
@@ -218,7 +272,7 @@ export default function SearchPage() {
       
       {/* Search Form */}
       <form onSubmit={handleSubmit} className="mb-8">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 mb-2">
           <div className="flex-1">
             <input
               type="text"
@@ -227,6 +281,7 @@ export default function SearchPage() {
               placeholder="Search posts, communities, comments, users..."
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               required
+              minLength={3}
             />
           </div>
           
@@ -247,10 +302,27 @@ export default function SearchPage() {
           <button
             type="submit"
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-            disabled={loading || !searchQuery.trim()}
+            disabled={loading || !searchQuery.trim() || searchQuery.trim().length < 3}
           >
             {loading ? <Spinner /> : 'Search'}
           </button>
+        </div>
+        
+        {/* Sort options */}
+        <div className="flex justify-end">
+          <div className="flex items-center">
+            <label htmlFor="sort-select" className="mr-2 text-sm text-gray-600">Sort:</label>
+            <select
+              id="sort-select"
+              value={sortBy}
+              onChange={handleSortChange}
+              className="text-sm px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="relevant">Most Relevant</option>
+              <option value="new">Newest</option>
+              <option value="top">Top</option>
+            </select>
+          </div>
         </div>
       </form>
       

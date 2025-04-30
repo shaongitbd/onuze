@@ -11,6 +11,7 @@ from django.conf import settings
 from .models import Notification
 from .serializers import NotificationSerializer
 from security.models import AuditLog
+from security.middleware import JWTCookieMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +150,10 @@ def WebSocketSecurityMiddlewareStack(inner):
     """
     Combine the security middlewares for WebSockets.
     """
-    return AuthMiddlewareStack(
+    # JWTCookieMiddleware handles authentication, so we don't need AuthMiddlewareStack
+    from security.middleware import JWTCookieMiddleware
+    
+    return JWTCookieMiddleware(
         RateLimitMiddleware(
             CSRFProtectionMiddleware(inner)
         )
@@ -323,11 +327,19 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         """
         notification = event.get('notification')
         
-        # Send notification to WebSocket
-        await self.send(text_data=json.dumps({
-            'type': 'new_notification',
-            'notification': notification
-        }))
+        # Debug logging
+        print(f"WebSocket notification_message received in consumer for user {self.user_id}")
+        print(f"Notification data: {notification}")
+        
+        try:
+            # Send notification to WebSocket
+            await self.send(text_data=json.dumps({
+                'type': 'new_notification',
+                'notification': notification
+            }))
+            print(f"WebSocket notification successfully sent to client for user {self.user_id}")
+        except Exception as e:
+            print(f"Error sending WebSocket notification to client: {e}")
     
     @database_sync_to_async
     def get_unread_notifications(self):

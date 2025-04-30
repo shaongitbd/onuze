@@ -3,13 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { fetchAPI } from '@/lib/api';
-import { useToast } from '@/components/ui/use-toast';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import Spinner from '@/components/Spinner';
 
 export default function BanAppealPage() {
   const { communityName } = useParams();
   const router = useRouter();
-  const { toast } = useToast();
+  const [alertMessage, setAlertMessage] = useState(null);
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -49,10 +48,9 @@ export default function BanAppealPage() {
     e.preventDefault();
     
     if (!formData.reason.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please provide a reason for your appeal.',
-        variant: 'destructive'
+      setAlertMessage({
+        type: 'error',
+        text: 'Please provide a reason for your appeal.'
       });
       return;
     }
@@ -72,20 +70,21 @@ export default function BanAppealPage() {
         body: JSON.stringify(appealData)
       });
       
-      toast({
-        title: 'Appeal Submitted',
-        description: 'Your ban appeal has been submitted successfully. Moderators will review it soon.',
+      setAlertMessage({
+        type: 'success',
+        text: 'Your ban appeal has been submitted successfully. Moderators will review it soon.'
       });
       
       // Redirect to the community page after successful submission
-      router.push(`/c/${communityName}`);
+      setTimeout(() => {
+        router.push(`/c/${communityName}`);
+      }, 1500);
       
     } catch (err) {
       console.error('Failed to submit ban appeal:', err);
-      toast({
-        title: 'Submission Failed',
-        description: err.message || 'Something went wrong. Please try again later.',
-        variant: 'destructive'
+      setAlertMessage({
+        type: 'error',
+        text: err.message || 'Something went wrong. Please try again later.'
       });
     } finally {
       setSubmitting(false);
@@ -95,7 +94,7 @@ export default function BanAppealPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[70vh]">
-        <LoadingSpinner size="lg" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -115,6 +114,14 @@ export default function BanAppealPage() {
       <p className="text-gray-600 mb-6">
         Use this form to appeal your ban from r/{communityName}. Provide a clear explanation of why you believe the ban should be reconsidered.
       </p>
+      
+      {alertMessage && (
+        <div className={`p-4 rounded-md mb-6 ${
+          alertMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+        }`}>
+          {alertMessage.text}
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
@@ -171,7 +178,7 @@ export default function BanAppealPage() {
           </button>
           <button
             type="submit"
-            className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             disabled={submitting}
           >
             {submitting ? 'Submitting...' : 'Submit Appeal'}

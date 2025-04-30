@@ -86,6 +86,32 @@ class Notification(models.Model):
             link_url=link_url
         )
         notification.save()
+        
+        # Broadcast the notification to the user via WebSockets
+        try:
+            from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
+            from .serializers import NotificationSerializer
+            
+            channel_layer = get_channel_layer()
+            
+            # Serialize the notification
+            serialized_notification = NotificationSerializer(notification).data
+            
+            # Send the notification to the user's group
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{user.id}",
+                {
+                    "type": "notification_message",
+                    "notification": serialized_notification
+                }
+            )
+            
+            print(f"WebSocket notification sent to user {user.id}")
+        except Exception as e:
+            # Log the error but don't prevent notification creation
+            print(f"Error sending WebSocket notification: {e}")
+        
         return notification
     
     @classmethod
@@ -187,7 +213,7 @@ class Notification(models.Model):
             notification_type=cls.WELCOME,
             content_type=cls.USER,
             content_id=user.id,
-            message=f"Welcome to Reddit Clone, {user.username}! We're glad you're here.",
+            message=f"Welcome to Secure Thread, {user.username}! We're glad you're here.",
             link_url="/help/getting-started"
         )
 

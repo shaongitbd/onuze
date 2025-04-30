@@ -26,6 +26,7 @@ env = environ.Env(
     ALLOWED_HOSTS=(list, []),
     DATABASE_URL=(str, 'sqlite:///db.sqlite3'),
     REDIS_URL=(str, ''),
+    FRONTEND_URL=(str, 'http://localhost:3000'),
 )
 
 # Read .env file if it exists
@@ -232,6 +233,13 @@ SIMPLE_JWT = {
     'TOKEN_TYPE_CLAIM': 'token_type',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+    'AUTH_COOKIE': 'access_token',
+    'AUTH_COOKIE_REFRESH': 'refresh_token',
+    'AUTH_COOKIE_DOMAIN': None,
+    'AUTH_COOKIE_SECURE': False,
+    'AUTH_COOKIE_HTTP_ONLY': False,
+    'AUTH_COOKIE_PATH': '/',
+    'AUTH_COOKIE_SAMESITE': 'Lax',
 }
 
 # CORS Settings
@@ -281,6 +289,9 @@ EMAIL_USE_TLS = env('EMAIL_USE_TLS', default=False)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='webmaster@localhost')
+
+# Frontend URL for redirects after email actions
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
 
 # Media file storage settings
 FILE_UPLOAD_PERMISSIONS = 0o644
@@ -342,9 +353,9 @@ CAPTCHA_NOISE_FUNCTIONS = ('captcha.helpers.noise_dots',)
 # Djoser Settings
 DJOSER = {
     'LOGIN_FIELD': 'username',
-    'PASSWORD_RESET_CONFIRM_URL': '#/password/reset/confirm/{uid}/{token}',  # Frontend URL
-    'USERNAME_RESET_CONFIRM_URL': '#/username/reset/confirm/{uid}/{token}', # Frontend URL
-    'ACTIVATION_URL': '#/activate/{uid}/{token}',                      # Frontend URL
+    'PASSWORD_RESET_CONFIRM_URL': 'api/v1/users/password/reset/confirm/{uid}/{token}/',  # Backend URL
+    'USERNAME_RESET_CONFIRM_URL': 'api/v1/users/username/reset/confirm/{uid}/{token}/', # Backend URL
+    'ACTIVATION_URL': 'api/v1/users/activate/{uid}/{token}/',                      # Backend URL
     'SEND_ACTIVATION_EMAIL': True,
     'SEND_CONFIRMATION_EMAIL': True,
     'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,

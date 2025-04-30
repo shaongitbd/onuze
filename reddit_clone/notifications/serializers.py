@@ -1,6 +1,25 @@
 from rest_framework import serializers
 from users.serializers import UserBriefSerializer
 from .models import Notification
+from django.contrib.contenttypes.models import ContentType
+
+
+class ContentTypeField(serializers.Field):
+    """
+    Custom field to handle content_type, whether it's a string or ContentType instance
+    """
+    def to_representation(self, value):
+        if isinstance(value, ContentType):
+            return {
+                'app_label': value.app_label,
+                'model': value.model
+            }
+        elif isinstance(value, str):
+            # Handle if it's a string
+            return {
+                'name': value
+            }
+        return None
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -8,16 +27,20 @@ class NotificationSerializer(serializers.ModelSerializer):
     Serializer for Notification model.
     """
     sender = UserBriefSerializer(read_only=True)
+    user_id = serializers.UUIDField(source='user.id', read_only=True)
+    content_type = ContentTypeField(read_only=True)
+    content_id = serializers.UUIDField(read_only=True)
+    id = serializers.UUIDField(read_only=True)
     
     class Meta:
         model = Notification
         fields = [
-            'id', 'user', 'sender', 'notification_type', 
+            'id', 'user_id', 'sender', 'notification_type', 
             'content_type', 'content_id', 'message', 
             'is_read', 'created_at', 'link_url'
         ]
         read_only_fields = [
-            'id', 'user', 'sender', 'notification_type', 
+            'id', 'user_id', 'sender', 'notification_type', 
             'content_type', 'content_id', 'message', 
             'created_at', 'link_url'
         ]

@@ -28,6 +28,9 @@ class SearchView(generics.GenericAPIView):
         community_id = request.query_params.get('community', None)
         sort = request.query_params.get('sort', 'relevant')  # relevant, new, top
         
+        # Initialize search query for PostgreSQL search
+        search_query = SearchQuery(query)
+        
         # Search posts
         if content_type in ['all', 'posts']:
             posts_query = Post.objects.filter(is_deleted=False)
@@ -37,7 +40,6 @@ class SearchView(generics.GenericAPIView):
             
             # Use PostgreSQL full-text search
             post_search_vector = SearchVector('title', weight='A') + SearchVector('content', weight='B')
-            search_query = SearchQuery(query)
             
             posts = posts_query.annotate(
                 rank=SearchRank(post_search_vector, search_query)

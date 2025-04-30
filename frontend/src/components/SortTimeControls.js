@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-const SortTimeControls = ({ sort, setSort, time, setTime }) => {
+const SortTimeControls = ({ sort, setSort, time, setTime, showPinned, setShowPinned }) => {
   const sortOptions = [
     { value: 'new', label: 'New' },
     { value: 'hot', label: 'Hot' },
@@ -32,10 +32,14 @@ const SortTimeControls = ({ sort, setSort, time, setTime }) => {
     setTime(e.target.value === 'all' ? '' : e.target.value);
   };
 
+  const handleShowPinnedChange = (e) => {
+    setShowPinned(e.target.checked);
+  };
+
   const showTimeFilter = sort === 'controversial' || sort === 'top'; // Show time filter only for relevant sorts
 
   return (
-    <div className="flex items-center space-x-4 bg-gray-100 p-3 rounded-md mb-4">
+    <div className="flex flex-wrap items-center gap-4 bg-gray-100 p-3 rounded-md mb-4">
       {/* Sort Dropdown */}
       <div>
         <label htmlFor="sort-select" className="sr-only">Sort by:</label>
@@ -65,6 +69,22 @@ const SortTimeControls = ({ sort, setSort, time, setTime }) => {
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {/* Pinned Posts Checkbox */}
+      {setShowPinned && (
+        <div className="flex items-center">
+          <input
+            id="pinned-checkbox"
+            type="checkbox"
+            checked={showPinned}
+            onChange={handleShowPinnedChange}
+            className="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+          />
+          <label htmlFor="pinned-checkbox" className="ml-2 text-sm text-gray-700">
+            Pinned Posts
+          </label>
         </div>
       )}
     </div>

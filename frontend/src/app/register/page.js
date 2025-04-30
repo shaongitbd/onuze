@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import Spinner from '@/components/Spinner';
+import EmailVerification from '@/components/EmailVerification';
 
 export default function RegisterPage() {
     const { register } = useAuth();
@@ -12,8 +13,9 @@ export default function RegisterPage() {
     const [password, setPassword] = useState('');
     const [rePassword, setRePassword] = useState('');
     const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [registered, setRegistered] = useState(false);
+    const [userUid, setUserUid] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -22,20 +24,30 @@ export default function RegisterPage() {
             return;
         }
         setError(null);
-        setSuccess(null);
         setLoading(true);
 
         try {
             // Using the register function from auth context
-            await register({
+            // Adding { noRedirect: true } to prevent automatic redirection
+            const response = await register({
                 username,
                 email,
                 password,
                 re_password: rePassword  // API expects re_password (not rePassword)
-            });
+            }, { noRedirect: true });
             
-            setSuccess('Registration successful! You will be redirected to login.');
-            // Redirect is handled in the auth context
+            // Save the uid from the response for email verification
+            if (response && response.id) {
+                setUserUid(response.id);
+            } else if (response && response.user && response.user.id) {
+                // Alternative: if uid is in a user object
+                setUserUid(response.user.id.toString());
+            } else {
+                console.log('Registration response:', response);
+            }
+            
+            // Set registered to true to show the verification component
+            setRegistered(true);
         } catch (err) {
             console.error("Registration error:", err);
             
@@ -64,6 +76,22 @@ export default function RegisterPage() {
             setLoading(false);
         }
     };
+
+    // If registered, show the email verification component
+    if (registered) {
+        return (
+            <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] px-4 py-8 bg-gray-50">
+                <div className="w-full max-w-lg">
+                    <EmailVerification 
+                        email={email}
+                        uid={userUid}
+                        onResendSuccess={() => console.log('Verification email resent')}
+                        onVerifySuccess={() => console.log('Email verified successfully')}
+                    />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] px-4 py-8 bg-gray-50">
@@ -136,11 +164,6 @@ export default function RegisterPage() {
                         {error && (
                             <div className="p-3 bg-red-50 border border-red-200 rounded-md">
                                 <p className="text-sm text-red-600 text-center whitespace-pre-wrap">{error}</p>
-                            </div>
-                        )}
-                        {success && (
-                            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                                <p className="text-sm text-green-600 text-center">{success}</p>
                             </div>
                         )}
 

@@ -14,23 +14,33 @@ import django.core.exceptions
 
 
 class CommunityViewSet(viewsets.ModelViewSet):
-    print("YO")
     """
     API endpoint for communities.
     Now uses 'path' for detail lookups (GET, PUT, PATCH, DELETE).
     """
     queryset = Community.objects.all()
-    print(queryset)
     serializer_class = CommunitySerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCommunityOwnerOrReadOnly]
     lookup_field = 'path'
     lookup_url_kwarg = 'path'
     
+    @action(detail=False, methods=['get'])
+    def popular(self, request):
+        """
+        Get the top 5 communities based on member count
+        """
+        top_communities = Community.objects.order_by('-member_count')[:5]
+        serializer = self.get_serializer(top_communities, many=True)
+        return Response(serializer.data)
+    
     def get_permissions(self):
         """
         Override to specify different permissions for different actions.
         """
-        if self.action in ['join', 'leave']:
+        if self.action == 'popular':
+            # Allow anyone to view top communities
+            return [permissions.AllowAny()]
+        elif self.action in ['join', 'leave']:
             # For join and leave actions, only require authentication
             return [permissions.IsAuthenticated()]
         # For other actions, use the default permission_classes
@@ -730,7 +740,7 @@ class CommunityRuleViewSet(viewsets.ModelViewSet):
     Nested under /communities/{community_path}/rules/
     """
     serializer_class = CommunityRuleSerializer
-    permission_classes = [permissions.IsAuthenticated, IsCommunityModeratorOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCommunityModeratorOrReadOnly]
     # Default lookup is pk (rule_id), which is fine for retrieve/update/delete
 
     # Helper method to get community from URL path

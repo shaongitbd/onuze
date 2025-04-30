@@ -1,5 +1,5 @@
 """
-URL Configuration for the Reddit Clone project.
+URL Configuration for the Secure Thread project.
 """
 from django.contrib import admin
 from django.urls import path, include
@@ -13,9 +13,9 @@ from drf_yasg import openapi
 # API documentation setup
 schema_view = get_schema_view(
     openapi.Info(
-        title="Reddit Clone API",
+        title="Secure Thread API",
         default_version='v1',
-        description="API for Reddit Clone",
+        description="API for Secure Thread",
         terms_of_service="https://www.example.com/terms/",
         contact=openapi.Contact(email="contact@example.com"),
         license=openapi.License(name="MIT License"),

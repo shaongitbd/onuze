@@ -105,20 +105,50 @@ def custom_exception_handler(exc, context):
             # Don't let logging errors affect the response
             pass
     
-    # For all exceptions, remove any sensitive information
+    # For all exceptions, create a standardized response format
     if response is not None:
-        # Remove any sensitive details
-        if 'detail' in response.data and isinstance(response.data['detail'], dict):
-            for key in list(response.data['detail'].keys()):
-                if key in ['token', 'password', 'refresh', 'access']:
-                    response.data['detail'][key] = ['[Redacted]']
+        # Create a standardized error structure
+        standardized_data = {
+            'timestamp': timezone.now().isoformat(),
+            'status_code': response.status_code,
+            'success': False
+        }
         
-        # Add timestamp
-        response.data['timestamp'] = timezone.now().isoformat()
+        # Format error message in a clean way
+        if isinstance(response.data, list):
+            # Convert list errors to a string joined with "; "
+            standardized_data['detail'] = "; ".join(response.data)
+        elif isinstance(response.data, dict):
+            # Check if it's a field error dictionary
+            if any(isinstance(value, list) and value for value in response.data.values()):
+                # Get the first field error
+                for field, errors in response.data.items():
+                    if errors and isinstance(errors, list):
+                        # Just show the error message without the field name
+                        standardized_data['detail'] = errors[0]
+                        break
+            # If it's a simple dict with just 'detail' key and string value, extract it
+            elif 'detail' in response.data and isinstance(response.data['detail'], str):
+                standardized_data['detail'] = response.data['detail']
+            else:
+                # For complex dictionaries, redact sensitive data
+                if 'detail' in response.data and isinstance(response.data['detail'], dict):
+                    for key in list(response.data['detail'].keys()):
+                        if key in ['token', 'password', 'refresh', 'access']:
+                            response.data['detail'][key] = ['[Redacted]']
+                
+                # Fall back to the original structure if we can't simplify
+                standardized_data['detail'] = response.data
+        else:
+            # For any other type, convert to string
+            standardized_data['detail'] = str(response.data)
         
         # Add trace ID for tracking (don't include in production)
         if hasattr(context.get('request', None), 'trace_id'):
-            response.data['trace_id'] = context['request'].trace_id
+            standardized_data['trace_id'] = context['request'].trace_id
+        
+        # Replace the original data with our standardized structure
+        response.data = standardized_data
     
     return response
 

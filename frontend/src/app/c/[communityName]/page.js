@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { getSubredditDetail, joinCommunity, leaveCommunity } from '../../../lib/api';
+import { getSubredditDetail, joinCommunity, leaveCommunity, fetchAPI } from '../../../lib/api';
 import Link from 'next/link';
 import Spinner from '../../../components/Spinner';
 import { useAuth } from '../../../lib/auth';
 import SortTimeControls from '../../../components/SortTimeControls';
 import InfinitePosts from '../../../components/InfinitePosts';
 import ModeratorTools from '../../../components/ModeratorTools';
+import PostCard from '../../../components/PostCard';
 
 export default function CommunityPage() {
   const { communityName } = useParams();
@@ -21,6 +22,10 @@ export default function CommunityPage() {
   const [isProcessingJoin, setIsProcessingJoin] = useState(false);
   const [joinError, setJoinError] = useState(null);
   const [isModerator, setIsModerator] = useState(false);
+  const [rules, setRules] = useState([]);
+  const [loadingRules, setLoadingRules] = useState(false);
+  const [pinnedPosts, setPinnedPosts] = useState([]);
+  const [loadingPinnedPosts, setLoadingPinnedPosts] = useState(false);
 
   useEffect(() => {
     async function fetchCommunityData() {
@@ -56,6 +61,50 @@ export default function CommunityPage() {
       fetchCommunityData();
     }
   }, [communityName, user]);
+
+  // Fetch community rules
+  useEffect(() => {
+    async function fetchCommunityRules() {
+      if (!community) return;
+      
+      try {
+        setLoadingRules(true);
+        const response = await fetchAPI(`/communities/${community.path}/rules/`);
+        setRules(response.results || []);
+      } catch (err) {
+        console.error('Failed to fetch community rules:', err);
+        // Default to empty rules array on error
+        setRules([]);
+      } finally {
+        setLoadingRules(false);
+      }
+    }
+
+    if (community) {
+      fetchCommunityRules();
+    }
+  }, [community]);
+
+  // Fetch pinned posts for the community
+  useEffect(() => {
+    async function fetchPinnedPosts() {
+      if (!communityName) return;
+      
+      try {
+        setLoadingPinnedPosts(true);
+        // Use the new pinned endpoint to get pinned posts
+        const response = await fetchAPI(`/posts/?is_pinned=true&community_path=${communityName}`);
+        setPinnedPosts(response.results || []);
+      } catch (err) {
+        console.error('Failed to fetch pinned posts:', err);
+        setPinnedPosts([]);
+      } finally {
+        setLoadingPinnedPosts(false);
+      }
+    }
+
+    fetchPinnedPosts();
+  }, [communityName]);
 
   const showTimeFilter = sort === 'top' || sort === 'controversial';
 
@@ -222,7 +271,23 @@ export default function CommunityPage() {
               </div>
             </div>
 
-            {/* Posts - Replaced with InfinitePosts */}
+            {/* Pinned Posts */}
+            {loadingPinnedPosts ? (
+              <div className="flex justify-center p-4">
+                <Spinner size="md" />
+              </div>
+            ) : pinnedPosts.length > 0 && (
+              <div className="mb-6">
+                {pinnedPosts.map(post => (
+                  <div key={post.id} className="mb-4">
+                    <PostCard post={post} />
+                  </div>
+                ))}
+                <div className="border-b border-gray-200 my-4"></div>
+              </div>
+            )}
+
+            {/* Regular Posts - Infinite scroll */}
             <InfinitePosts
               key={`${communityName}-${sort}-${showTimeFilter ? time : 'all'}`}
               initialParams={{
@@ -264,25 +329,42 @@ export default function CommunityPage() {
                 
                 <div className="mb-6">
                   <h4 className="text-sm font-medium text-gray-500 uppercase mb-3">Community Rules</h4>
-                  <ul className="space-y-3 text-sm">
-                    <li className="flex items-start">
-                      <span className="bg-red-100 text-red-600 font-bold rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5">1</span>
-                      <span>Be respectful to others</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="bg-red-100 text-red-600 font-bold rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5">2</span>
-                      <span>No spamming or self-promotion</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="bg-red-100 text-red-600 font-bold rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5">3</span>
-                      <span>Posts must be relevant to the community</span>
-                    </li>
-                  </ul>
+                  {loadingRules ? (
+                    <div className="flex justify-center py-4">
+                      <Spinner size="small" />
+                    </div>
+                  ) : rules.length > 0 ? (
+                    <ul className="space-y-3 text-sm">
+                      {rules.map((rule) => (
+                        <li key={rule.id} className="flex items-start mb-3">
+                          <span className="bg-red-100 text-red-600 font-bold rounded-full w-5 h-5 flex items-center justify-center mr-2 mt-0.5">
+                            {rule.order || '•'}
+                          </span>
+                          <div>
+                            <span className="font-medium">{rule.title}</span>
+                            {rule.description && (
+                              <p className="text-gray-600 text-xs mt-1">{rule.description}</p>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No community rules have been set.</p>
+                  )}
                 </div>
-                
+
+                {isModerator && (
+                  <Link 
+                    href={`/c/${communityName}/mod/edit`}
+                    className="block w-full py-2 bg-blue-600 text-white font-medium rounded text-center hover:bg-red-700 transition-colors duration-200"
+                  >
+                    Moderator Tools
+                  </Link>
+                )}
                 {/* --- Join/Leave Button --- */}
-                {user && community && (
-                  <div className="mt-6 pt-6 border-t border-gray-200">
+                {user && !isModerator && community && (
+                  <div className="mt-6 mt-4 pt-6 border-t border-gray-200">
                     {isProcessingJoin ? (
                       <button 
                         disabled
@@ -309,19 +391,20 @@ export default function CommunityPage() {
                 )}
                 {/* Display Join/Leave Errors */} 
                 {joinError && (
-                  <div className="mt-2 text-xs text-red-600 text-center">
+                  <div className="mt-2 pt=2 text-xs text-red-600 text-center">
                     {joinError}
                   </div>
                 )}
                 {/* -------------------------- */}
                 
                 {/* Moderator Tools Section */}
-                {isModerator && <ModeratorTools communityPath={communityName} />}
+
+               
                 
                 {user && (
                   <Link 
                     href={`/submit`}
-                    className="block w-full py-2 bg-red-600 text-white font-medium rounded text-center hover:bg-red-700 transition-colors duration-200"
+                    className="block w-full mt-4 py-2 bg-red-600 text-white font-medium rounded text-center hover:bg-red-700 transition-colors duration-200"
                   >
                     Create Post
                   </Link>
@@ -334,26 +417,13 @@ export default function CommunityPage() {
             
             {/* Community Tags */}
             <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
-              <h3 className="text-md font-bold text-gray-700 mb-3">Popular Tags</h3>
+              <h3 className="text-md font-bold text-gray-700 mb-3">Other info</h3>
               <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs">#trending</span>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">#popular</span>
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs">#new</span>
-                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">#featured</span>
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs">#discussion</span>
+                {community.sidebar_content && community.sidebar_content}
               </div>
             </div>
             
-            {/* Footer */}
-            <div className="text-xs text-gray-500 mb-6">
-              <ul className="flex flex-wrap gap-x-2 gap-y-1">
-                <li><a href="#" className="hover:underline hover:text-red-600">Help</a> •</li>
-                <li><a href="#" className="hover:underline hover:text-red-600">About</a> •</li>
-                <li><a href="#" className="hover:underline hover:text-red-600">Terms</a> •</li>
-                <li><a href="#" className="hover:underline hover:text-red-600">Privacy</a></li>
-              </ul>
-              <p className="mt-2">© 2023 RedditClone, Inc. All rights reserved.</p>
-            </div>
+         
           </div>
         </div>
       </div>

@@ -197,7 +197,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         self.save(update_fields=['two_factor_secret'])
         return self.two_factor_secret
     
-    def get_2fa_qr_uri(self, issuer_name="Reddit Clone"):
+    def get_2fa_qr_uri(self, issuer_name="Secure Thread"):
         """
         Get the URI for generating a QR code for 2FA setup.
         """

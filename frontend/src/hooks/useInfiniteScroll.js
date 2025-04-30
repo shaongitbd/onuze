@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { fetchPosts, fetchComments, fetchUserComments } from '@/lib/api';
+import { fetchPosts, fetchComments, fetchUserComments, fetchNotifications } from '@/lib/api';
 
 /**
  * Custom hook for fetching infinite posts with pagination using API-provided next URLs
@@ -77,6 +77,31 @@ export function useInfiniteUserComments(username, initialParams = {}, options = 
     },
     getNextPageParam: (lastPage) => {
       console.log(`[useInfiniteUserComments - getNextPageParam] Last page next URL: ${lastPage?.next}`);
+      return lastPage?.next || undefined;
+    },
+    initialPageParam: undefined,
+    ...options,
+  });
+}
+
+/**
+ * Custom hook for fetching infinite notifications with pagination using API-provided next URLs
+ * @param {Object} initialParams - Initial parameters for the first notifications query (e.g., is_read filter)
+ * @param {Object} options - Additional options for the infinite query
+ * @returns {Object} The infinite query result object
+ */
+export function useInfiniteNotifications(initialParams = {}, options = {}) {
+  return useInfiniteQuery({
+    queryKey: ['notifications', initialParams],
+    queryFn: async ({ pageParam }) => {
+      const fetchArg = pageParam || initialParams;
+      console.log(`[useInfiniteNotifications] Fetching page. Argument:`, fetchArg);
+      // Pass the URL string directly if pageParam exists, otherwise pass params object
+      const response = await fetchNotifications(fetchArg);
+      return response;
+    },
+    getNextPageParam: (lastPage) => {
+      console.log(`[useInfiniteNotifications - getNextPageParam] Last page next URL: ${lastPage?.next}`);
       return lastPage?.next || undefined;
     },
     initialPageParam: undefined,

@@ -34,7 +34,7 @@
   </p>
   
   <!-- PREVIEW IMAGE -->
-  <img src="https://imgur.com/sqgX1OJ.png" alt="Onuze Live Website Screenshot" style="width: 90%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);" />
+  <img src="https://redify.b-cdn.net/post-images/posts/05cb98ce3aa94d34b46351b39c71fb74_9e6fb397-c664-497f-ab48-15a1c4eb2e45.png" alt="Onuze Live Website Screenshot" style="width: 90%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);" />
 </div>
 
 <!-- GRADIENT SEPARATOR -->
@@ -466,17 +466,17 @@ We follow a [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming communit
   <table>
     <tr>
       <td align="center">
-        <img src="https://i.imgur.com/KEoRBn9.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/email.png" width="48" height="48"/><br/>
         <b>Email</b><br/>
         <a href="mailto:shaongit@gmail.com">shaongit@gmail.com</a>
       </td>
       <td align="center">
-        <img src="https://i.imgur.com/6qW2MiY.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/domain.png" width="48" height="48"/><br/>
         <b>Website</b><br/>
         <a href="https://onuze.me">onuze.me</a>
       </td>
       <td align="center">
-        <img src="https://i.imgur.com/PmmIJne.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/github.png" width="48" height="48"/><br/>
         <b>GitHub</b><br/>
         <a href="https://github.com/shaongitbd">@shaongitbd</a>
       </td>

@@ -205,7 +205,11 @@
         <b>Redis</b><br/>
         <sub>WebSockets & Cache</sub>
       </td>
-     
+      <td align="center">
+        <img src="https://worldvectorlogo.com/download/django.svg" width="48" height="48"/><br/>
+        <b>Django DRF</b><br/>
+        <sub>Secured & Battletested</sub>
+      </td>
     </tr>
   </table>
 </div>

@@ -1,4 +1,9 @@
-# SecureThread
+<div align="center">
+  <h1>
+    <img src="https://i.ibb.co/4V2S3Mf/onuze-logo.png" alt="Onuze" height="70" align="right">
+    Onuze
+  </h1>
+</div>
 
 Welcome to the official github repo of onuze( https://onuze.me). This application is built by [shaongitbd](https://github.com/shaongitbd). For any problem feel free to mail me at shaongit@gmail.com
 

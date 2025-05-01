@@ -205,11 +205,7 @@
         <b>Redis</b><br/>
         <sub>WebSockets & Cache</sub>
       </td>
-      <td align="center">
-        <img src="https://cdn.worldvectorlogo.com/logos/typescript.svg" width="48" height="48"/><br/>
-        <b>TypeScript</b><br/>
-        <sub>Type Safety</sub>
-      </td>
+     
     </tr>
   </table>
 </div>

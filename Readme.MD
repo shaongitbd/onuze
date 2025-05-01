@@ -1,7 +1,7 @@
 <div align="center">
   
   <!-- HEADER SECTION -->
-  <img src="https://i.imgur.com/a/PGVzmFe" alt="Onuze" width="180">
+  <img src="https://redify.b-cdn.net/post-images/posts/05cb98ce3aa94d34b46351b39c71fb74_9e6fb397-c664-497f-ab48-15a1c4eb2e45.png" alt="Onuze" width="180">
 
   <h1>
     <img src="https://i.imgur.com/sqgX1OJ;Community+2.0" alt="Typing SVG" />
@@ -35,7 +35,7 @@
   </p>
   
   <!-- PREVIEW IMAGE -->
-  <img src="https://redify.b-cdn.net/post-images/posts/05cb98ce3aa94d34b46351b39c71fb74_9e6fb397-c664-497f-ab48-15a1c4eb2e45.png" alt="Onuze Live Website Screenshot" style="width: 90%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);" />
+  <img src="https://imgur.com/sqgX1OJ.png" alt="Onuze Live Website Screenshot" style="width: 90%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);" />
 </div>
 
 <!-- GRADIENT SEPARATOR -->

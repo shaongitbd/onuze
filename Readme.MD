@@ -1,6 +1,6 @@
 <div align="center">
   <h1>
-    <img src="https://i.ibb.co/4V2S3Mf/onuze-logo.png" alt="Onuze" height="70" align="right">
+    <img src="https://onuze.me/logo.png" alt="Onuze" height="70" align="right">
     Onuze
   </h1>
 </div>

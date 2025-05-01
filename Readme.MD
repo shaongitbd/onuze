@@ -6,7 +6,7 @@
 
 
   <p align="center">
-    <em>Unfiltered. Uncensored. Unapologetically.</em>
+    <em>Unfiltered. Uncensored. Unapologetic.</em>
   </p>
   
   <!-- BADGES -->

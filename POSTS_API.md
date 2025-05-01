@@ -1,4 +1,4 @@
-# Reddit Clone - Posts API Endpoints
+# Onuze - Posts API Endpoints
 
 This document describes the available API endpoints for managing posts in the SecureThread application.
 

@@ -1,4 +1,4 @@
-# Reddit Clone - Communities API Endpoints
+# Onuze - Communities API Endpoints
 
 This document describes the available API endpoints for managing communities (subreddits) in  SecureThread .
 

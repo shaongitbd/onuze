@@ -1,4 +1,4 @@
-# Reddit Clone - Comments API Endpoints
+# Onuze - Comments API Endpoints
 
 This document describes the available API endpoints for managing comments in the SecureThread backend.
 

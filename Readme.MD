@@ -83,17 +83,17 @@
   <table>
     <tr>
       <td width="33%" align="center">
-        <img src="https://i.imgur.com/yvDaOPd.png" width="64" height="64" alt="Communities Icon" /><br>
+        <img src="https://img.icons8.com/color/96/000000/community.png" width="64" height="64" alt="Communities Icon" /><br>
         <h3>🏘️ Communities</h3>
         <p>Create and join vibrant communities with customized themes, rules, and moderation</p>
       </td>
       <td width="33%" align="center">
-        <img src="https://i.imgur.com/kRNEXXm.png" width="64" height="64" alt="Posts Icon" /><br>
+        <img src="https://img.icons8.com/color/96/000000/news.png" width="64" height="64" alt="Posts Icon" /><br>
         <h3>📝 Rich Content</h3>
         <p>Share stories with images, videos, and formatted text that stands out</p>
       </td>
       <td width="33%" align="center">
-        <img src="https://i.imgur.com/UPGWK24.png" width="64" height="64" alt="Realtime Icon" /><br>
+        <img src="https://img.icons8.com/color/96/000000/speed.png" width="64" height="64" alt="Realtime Icon" /><br>
         <h3>⚡ Real-time</h3>
         <p>Experience instant updates and notifications without refreshing</p>
       </td>
@@ -240,7 +240,7 @@
   <table>
     <tr>
       <td align="center">
-        <img src="https://i.imgur.com/QvtALE3.png" width="64" height="64"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/settings.png" width="64" height="64"/><br/>
         <h3>Prerequisites</h3>
         <ul align="left">
           <li>Python 3.8+</li>
@@ -250,7 +250,7 @@
         </ul>
       </td>
       <td align="center">
-        <img src="https://i.imgur.com/AizTPCk.png" width="64" height="64"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/rocket.png" width="64" height="64"/><br/>
         <h3>Quick Start</h3>
         <p align="left">
           Clone the repo and follow our <a href="#backend-setup">detailed setup instructions</a> below to get started in minutes.
@@ -342,23 +342,23 @@ The frontend will be available at `http://localhost:3000`
   <table>
     <tr>
       <td align="center" width="20%">
-        <img src="https://i.imgur.com/DVSe5Bl.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/group.png" width="48" height="48"/><br/>
         <a href="./COMMUNITIES_API.md">Communities API</a>
       </td>
       <td align="center" width="20%">
-        <img src="https://i.imgur.com/DAxNbw3.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/blog.png" width="48" height="48"/><br/>
         <a href="./POSTS_API.md">Posts API</a>
       </td>
       <td align="center" width="20%">
-        <img src="https://i.imgur.com/vQKK0g7.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/comments.png" width="48" height="48"/><br/>
         <a href="./COMMENTS_API.md">Comments API</a>
       </td>
       <td align="center" width="20%">
-        <img src="https://i.imgur.com/s0MDamz.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/search.png" width="48" height="48"/><br/>
         <a href="./SEARCH_API.md">Search API</a>
       </td>
       <td align="center" width="20%">
-        <img src="https://i.imgur.com/GKnHesD.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/bell.png" width="48" height="48"/><br/>
         <a href="./NOTIFICATIONS_API.md">Notifications API</a>
       </td>
     </tr>
@@ -378,17 +378,17 @@ The frontend will be available at `http://localhost:3000`
   <table>
     <tr>
       <td align="center" width="33%">
-        <img src="https://i.imgur.com/uDEA2CN.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/bug.png" width="48" height="48"/><br/>
         <h3>Report Issues</h3>
         <p>Help us identify bugs and suggest improvements</p>
       </td>
       <td align="center" width="33%">
-        <img src="https://i.imgur.com/FJ3RLxW.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/pull-request.png" width="48" height="48"/><br/>
         <h3>Submit PRs</h3>
         <p>Code fixes and feature enhancements welcome</p>
       </td>
       <td align="center" width="33%">
-        <img src="https://i.imgur.com/0uomJbj.png" width="48" height="48"/><br/>
+        <img src="https://img.icons8.com/color/96/000000/star.png" width="48" height="48"/><br/>
         <h3>Spread the Word</h3>
         <p>Star the repo and share with others</p>
       </td>

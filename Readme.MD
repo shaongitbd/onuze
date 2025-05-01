@@ -4,7 +4,8 @@
   <img src="https://i.imgur.com/a/PGVzmFe" alt="Onuze" width="180">
 
   <h1>
-    <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=700&size=40&duration=3000&pause=1000&color=FF424D&center=true&vCenter=true&width=300&lines=ONUZE;Community+2.0" alt="Typing SVG" />
+    <img src="https://i.imgur.com/sqgX1OJ;Community+2.0" alt="Typing SVG" />
+    ![Alt text](https://i.imgur.com/sqgX1OJ;Community+2.0 "Live")
   </h1>
 
   <p align="center">
@@ -418,7 +419,7 @@ We follow a [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming communit
   <a href="https://github.com/shaongitbd">
     <img src="https://github.com/shaongitbd.png" width="100" height="100" style="border-radius:50%; border: 3px solid #FF424D;"/>
     <br/>
-    <b>Shao</b>
+    <b>Shaongitbd</b>
     <br/>
     <i>Lead Developer & Creator</i>
   </a>
@@ -497,6 +498,6 @@ We follow a [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming communit
   <br/>
   
   <a href="https://onuze.me">
-    <img src="https://img.shields.io/badge/BUILT_WITH_❤️_BY-SHAO-FF424D?style=for-the-badge" alt="Built with love" />
+    <img src="https://img.shields.io/badge/BUILT_WITH_❤️_BY-SHAONGITBD-FF424D?style=for-the-badge" alt="Built with love" />
   </a>
 </div>

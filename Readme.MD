@@ -1,12 +1,9 @@
 <div align="center">
   
   <!-- HEADER SECTION -->
-  <img src="https://redify.b-cdn.net/post-images/posts/05cb98ce3aa94d34b46351b39c71fb74_9e6fb397-c664-497f-ab48-15a1c4eb2e45.png" alt="Onuze" width="180">
+  <img src="https://redify.b-cdn.net/post-images/posts/05cb98ce3aa94d34b46351b39c71fb74_9e6fb397-c664-497f-ab48-15a1c4eb2e45.png" alt="Onuze" width="300">
 
-  <h1>
-    <img src="https://i.imgur.com/sqgX1OJ;Community+2.0" alt="Typing SVG" />
-   
-  </h1>
+
 
   <p align="center">
     <em>The next evolution of community platforms with real-time engagement & stunning UI</em>

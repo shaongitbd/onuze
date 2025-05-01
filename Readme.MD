@@ -1,7 +1,7 @@
 <div align="center">
   
   <!-- HEADER SECTION -->
-  <img src="https://onuze.me/logo.png" alt="Onuze" width="180">
+  <img src="https://i.imgur.com/a/PGVzmFe" alt="Onuze" width="180">
 
   <h1>
     <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=700&size=40&duration=3000&pause=1000&color=FF424D&center=true&vCenter=true&width=300&lines=ONUZE;Community+2.0" alt="Typing SVG" />

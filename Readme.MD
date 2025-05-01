@@ -70,7 +70,9 @@
 </h2>
 
 <p align="center">
-  <b>Onuze</b> is a cutting-edge community platform that reimagines how people connect, share, and engage online. Built with modern technologies and designed with user experience at its core, it delivers real-time interactions with a beautiful interface that adapts perfectly to any device.
+  <b>Onuze</b>  is a community-driven platform where every voice matters.Join diverse communities, create meaningful posts, and dive into real discussions — all without filters or gatekeepers. 
+
+
 </p>
 
 <!-- KEY FEATURES SECTION -->

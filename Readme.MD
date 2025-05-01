@@ -1,161 +1,269 @@
 <div align="center">
+  
+  <!-- HEADER SECTION -->
   <img src="https://onuze.me/logo.png" alt="Onuze" width="180">
-  
-  # Onuze
 
-  <p>A modern, real-time community platform built for engagement</p>
+  <h1>
+    <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=700&size=40&duration=3000&pause=1000&color=FF424D&center=true&vCenter=true&width=300&lines=ONUZE;Community+2.0" alt="Typing SVG" />
+  </h1>
 
-  [![Website](https://img.shields.io/badge/Website-onuze.me-FF424D)](https://onuze.me)
-  [![License](https://img.shields.io/badge/License-CC_BY_NC_4.0-lightgrey)](#license)
-  [![Django](https://img.shields.io/badge/Backend-Django-092E20)](https://www.djangoproject.com/)
-  [![Next.js](https://img.shields.io/badge/Frontend-Next.js-black)](https://nextjs.org/)
-  [![WebSockets](https://img.shields.io/badge/Features-WebSockets-4e56a6)](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
-  [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791)](https://www.postgresql.org/)
+  <p align="center">
+    <em>The next evolution of community platforms with real-time engagement & stunning UI</em>
+  </p>
   
-  <br/>
+  <!-- BADGES -->
+  <p align="center">
+    <a href="https://onuze.me">
+      <img src="https://img.shields.io/badge/ONUZE-Visit_Live_Demo-FF424D?style=for-the-badge&logo=Safari&logoColor=white" alt="Visit Website" />
+    </a>
+    <br />
+    <a href="https://onuze.me"><img src="https://img.shields.io/website-up-down-green-red/http/onuze.me.svg" alt="Website Status" /></a>
+    <img src="https://img.shields.io/github/license/shaongitbd/onuze?label=License&color=lightgrey" alt="License" />
+    <img src="https://img.shields.io/badge/Made%20with-Django-092E20?style=flat&logo=django&logoColor=white" alt="Made with Django" />
+    <img src="https://img.shields.io/badge/Made%20with-Next.js-000000?style=flat&logo=next.js&logoColor=white" alt="Made with Next.js" />
+    <img src="https://img.shields.io/badge/Powered%20by-WebSockets-4e56a6?style=flat&logo=socketdotio&logoColor=white" alt="Powered by WebSockets" />
+    <img src="https://img.shields.io/badge/Database-PostgreSQL-336791?style=flat&logo=postgresql&logoColor=white" alt="Database: PostgreSQL" />
+  </p>
   
-  <a href="https://onuze.me">
-    <img src="https://img.shields.io/badge/View_Demo-Visit_Website-FF424D?style=for-the-badge" alt="View Demo" />
-  </a>
+  <!-- STATUS INDICATORS -->
+  <p align="center">
+    <img src="https://img.shields.io/github/v/release/shaongitbd/onuze?include_prereleases&color=blue&label=Version" alt="Version" />
+    <img src="https://img.shields.io/github/last-commit/shaongitbd/onuze?label=Last%20Update" alt="Last Update" />
+    <img src="https://img.shields.io/github/issues/shaongitbd/onuze?label=Issues" alt="Issues" />
+    <img src="https://img.shields.io/github/stars/shaongitbd/onuze?style=social" alt="Stars" />
+  </p>
   
+  <!-- PREVIEW IMAGE -->
+  <img src="https://i.imgur.com/FBoDVai.png" alt="Onuze Preview" style="width: 90%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);" />
 </div>
 
-<br/>
-
+<!-- GRADIENT SEPARATOR -->
 <p align="center">
-  <b>Onuze</b> is a modern Reddit-inspired platform with real-time capabilities, comprehensive moderation tools, and a beautiful UI designed for maximum engagement.
+  <img src="https://i.imgur.com/waxVImv.png" alt="Colorful Separator" width="600" height="16">
 </p>
 
+<!-- TABLE OF CONTENTS -->
 <details open>
-<summary>📋 Table of Contents</summary>
+<summary><h2>📋 What's Inside</h2></summary>
 
-- [✨ Features](#-key-features)
-- [🏗️ Technology Stack](#️-technology-stack)
-- [🖥️ Demo](#️-demo)
-- [🚀 Getting Started](#-getting-started)
-- [📖 API Documentation](#-api-documentation)
-- [🤝 Contributing](#-contributing)
-- [📜 License](#-license)
-- [👥 Team](#-team)
+```
+⚡ ONUZE - COMMUNITY PLATFORM
+├── 🚀 Overview
+├── ✨ Core Features
+│   ├── 🏘️ Communities
+│   ├── 📝 Posts & Content
+│   ├── 💬 Real-time Comments
+│   ├── 🔔 Smart Notifications 
+│   └── 🛡️ Moderation Tools
+├── 🖥️ Live Demo
+├── 🏗️ Tech Architecture
+├── ⚙️ Installation 
+├── 📊 API Reference
+├── 👥 Meet the Team
+├── 📜 License Details
+└── 📞 Support Options
+```
 
 </details>
 
-## 🖥️ Demo
+<!-- OVERVIEW WITH ANIMATION -->
+<h2 align="center">
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=500&size=22&duration=3000&pause=1000&color=3584e4&center=true&vCenter=true&width=500&lines=Reimagine+Community+Experiences;Real-time+Engagement;Beautiful+UI;Powerful+Moderation" alt="Key Features Typing" />
+</h2>
 
+<p align="center">
+  <b>Onuze</b> is a cutting-edge community platform that reimagines how people connect, share, and engage online. Built with modern technologies and designed with user experience at its core, it delivers real-time interactions with a beautiful interface that adapts perfectly to any device.
+</p>
+
+<!-- KEY FEATURES SECTION -->
+<h2 align="center">✨ Core Features</h2>
+
+<!-- Feature Cards -->
 <div align="center">
-  <a href="https://onuze.me">
-    <img src="https://via.placeholder.com/800x400?text=Onuze+Platform+Screenshot" alt="Onuze Demo" width="80%" />
-  </a>
-  <p><i>Live demo available at <a href="https://onuze.me">onuze.me</a></i></p>
+  <table>
+    <tr>
+      <td width="33%" align="center">
+        <img src="https://i.imgur.com/yvDaOPd.png" width="64" height="64" alt="Communities Icon" /><br>
+        <h3>🏘️ Communities</h3>
+        <p>Create and join vibrant communities with customized themes, rules, and moderation</p>
+      </td>
+      <td width="33%" align="center">
+        <img src="https://i.imgur.com/kRNEXXm.png" width="64" height="64" alt="Posts Icon" /><br>
+        <h3>📝 Rich Content</h3>
+        <p>Share stories with images, videos, and formatted text that stands out</p>
+      </td>
+      <td width="33%" align="center">
+        <img src="https://i.imgur.com/UPGWK24.png" width="64" height="64" alt="Realtime Icon" /><br>
+        <h3>⚡ Real-time</h3>
+        <p>Experience instant updates and notifications without refreshing</p>
+      </td>
+    </tr>
+  </table>
 </div>
 
-## ✨ Key Features
-
-<table>
-  <tr>
-    <td width="50%">
-      <h3 align="center">🏘️ Communities</h3>
-      <ul>
-        <li>✅ Create and customize your own communities</li>
-        <li>✅ Join and participate in existing communities</li>
-        <li>✅ Filter content by tags</li>
-        <li>✅ Advanced member management with ban/unban system</li>
-        <li>✅ Appeal system for banned members</li>
-      </ul>
-    </td>
-    <td width="50%">
-      <h3 align="center">📝 Posts</h3>
-      <ul>
-        <li>✅ Create rich posts with text, images, and videos</li>
-        <li>✅ Pin important announcements (moderators only)</li>
-        <li>✅ Lock/unlock discussions</li>
-        <li>✅ Report inappropriate content</li>
-        <li>✅ Real-time comment updates via WebSockets</li>
-      </ul>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <h3 align="center">💬 Comments</h3>
-      <ul>
-        <li>✅ Participate in discussions with nested replies</li>
-        <li>✅ Edit and delete your own comments</li>
-        <li>✅ Report inappropriate comments</li>
-        <li>✅ Real-time notifications for new replies</li>
-      </ul>
-    </td>
-    <td width="50%">
-      <h3 align="center">🛡️ Moderation Tools</h3>
-      <ul>
-        <li>✅ Community customization options</li>
-        <li>✅ Member appeal review system</li>
-        <li>✅ Comprehensive ban management</li>
-        <li>✅ Post and comment moderation</li>
-      </ul>
-    </td>
-  </tr>
-</table>
-
+<!-- Feature Details Expandable Sections -->
 <details>
-<summary>View More Features</summary>
-
-### 🔔 Notifications
-- ✅ Instant alerts for new comments and posts
-- ✅ Moderation action notifications (ban/unban)
-- ✅ Customizable notification preferences
-
-### 🔍 Search & Discovery
-- ✅ Comprehensive search across posts, comments, and communities
-- ✅ Advanced filtering options
-- ✅ User profile views with content history
-
+<summary><h3>🏘️ Communities</h3></summary>
+<ul>
+  <li>✅ <b>Custom Creation</b> - Build and personalize your community with unique themes</li>
+  <li>✅ <b>Topic Filters</b> - Organize content with custom tags and categories</li>
+  <li>✅ <b>Member Management</b> - Advanced tools for growing healthy communities</li>
+  <li>✅ <b>Moderation System</b> - Keep discussions civil with flexible moderation options</li>
+  <li>✅ <b>Appeal Process</b> - Fair system for reviewing member status and bans</li>
+</ul>
 </details>
 
-## 🏗️ Technology Stack
-
-<table>
-  <tr>
-    <td align="center" width="20%">
-      <img src="https://cdn.worldvectorlogo.com/logos/nextjs-2.svg" width="50" height="50"/><br/>
-      <strong>Next.js</strong><br/>
-      Frontend Framework
-    </td>
-    <td align="center" width="20%">
-      <img src="https://cdn.worldvectorlogo.com/logos/django.svg" width="50" height="50"/><br/>
-      <strong>Django</strong><br/>
-      Backend Framework
-    </td>
-    <td align="center" width="20%">
-      <img src="https://cdn.worldvectorlogo.com/logos/postgresql.svg" width="50" height="50"/><br/>
-      <strong>PostgreSQL</strong><br/>
-      Database
-    </td>
-    <td align="center" width="20%">
-      <img src="https://cdn.worldvectorlogo.com/logos/redis.svg" width="50" height="50"/><br/>
-      <strong>Redis</strong><br/>
-      WebSocket & Caching
-    </td>
-    <td align="center" width="20%">
-      <img src="https://static.wikia.nocookie.net/logopedia/images/7/73/BunnyNET_logo.svg" width="50" height="50"/><br/>
-      <strong>BunnyNet</strong><br/>
-      Media Storage
-    </td>
-  </tr>
-</table>
-
-## 🚀 Getting Started
-
-### System Requirements
-
-- Python 3.8+
-- Node.js 14+
-- PostgreSQL 12+
-- Redis 6+
-
-### Backend Setup
+<details>
+<summary><h3>📝 Posts & Content</h3></summary>
+<ul>
+  <li>✅ <b>Rich Media</b> - Create engaging posts with images, videos, and formatted text</li>
+  <li>✅ <b>Post Controls</b> - Pin announcements, lock discussions when needed</li>
+  <li>✅ <b>Content Moderation</b> - Report system for community standards enforcement</li>
+  <li>✅ <b>Live Updates</b> - See new comments appear in real-time via WebSockets</li>
+  <li>✅ <b>Voting System</b> - Democratic content curation through member voting</li>
+</ul>
+</details>
 
 <details>
-<summary>Expand Instructions</summary>
+<summary><h3>💬 Comments & Discussions</h3></summary>
+<ul>
+  <li>✅ <b>Nested Replies</b> - Threaded conversations that maintain context</li>
+  <li>✅ <b>Real-time Updates</b> - See new replies instantly without refreshing</li>
+  <li>✅ <b>Edit History</b> - Track changes to maintain transparency</li>
+  <li>✅ <b>Formatting Tools</b> - Express yourself with rich text formatting</li>
+  <li>✅ <b>Moderation Tools</b> - Report inappropriate content for review</li>
+</ul>
+</details>
+
+<details>
+<summary><h3>🔔 Notifications</h3></summary>
+<ul>
+  <li>✅ <b>Instant Alerts</b> - Be notified immediately when someone engages with your content</li>
+  <li>✅ <b>Custom Preferences</b> - Control exactly what you want to be notified about</li>
+  <li>✅ <b>In-app & Email</b> - Get notified your way, wherever you are</li>
+  <li>✅ <b>Moderation Updates</b> - Transparency with notifications about moderation actions</li>
+</ul>
+</details>
+
+<details>
+<summary><h3>🔍 Discovery</h3></summary>
+<ul>
+  <li>✅ <b>Smart Search</b> - Find exactly what you're looking for across all content types</li>
+  <li>✅ <b>Advanced Filters</b> - Narrow results by time, popularity, and more</li>
+  <li>✅ <b>Related Content</b> - Discover new communities and discussions you'll love</li>
+  <li>✅ <b>User Profiles</b> - Explore content history from specific users</li>
+</ul>
+</details>
+
+<details>
+<summary><h3>🛡️ Moderation Suite</h3></summary>
+<ul>
+  <li>✅ <b>Flexible Tools</b> - Comprehensive systems for maintaining community standards</li>
+  <li>✅ <b>Member Management</b> - Ban, mute, or warn community members when necessary</li>
+  <li>✅ <b>Appeal Process</b> - Fair system for reviewing moderation decisions</li>
+  <li>✅ <b>Activity Logs</b> - Complete transparency of moderation actions</li>
+  <li>✅ <b>Auto-moderation</b> - Configurable rules to handle common issues automatically</li>
+</ul>
+</details>
+
+<!-- DEMO SECTION -->
+<h2 align="center">🖥️ Live Demo</h2>
+
+<p align="center">
+  <a href="https://onuze.me" target="_blank">
+    <img src="https://i.imgur.com/iHg3h9V.png" alt="Onuze Demo" style="width:90%; border-radius:10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);" />
+  </a>
+</p>
+
+<p align="center">
+  <b><a href="https://onuze.me" target="_blank">➡️ Experience Onuze Live</a></b>
+</p>
+
+<!-- TECHNOLOGY STACK -->
+<h2 align="center">🏗️ Technology Architecture</h2>
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://cdn.worldvectorlogo.com/logos/nextjs-2.svg" width="48" height="48"/><br/>
+        <b>Next.js</b><br/>
+        <sub>Frontend Framework</sub>
+      </td>
+      <td align="center">
+        <img src="https://cdn.worldvectorlogo.com/logos/django.svg" width="48" height="48"/><br/>
+        <b>Django</b><br/>
+        <sub>Backend API</sub>
+      </td>
+      <td align="center">
+        <img src="https://cdn.worldvectorlogo.com/logos/postgresql.svg" width="48" height="48"/><br/>
+        <b>PostgreSQL</b><br/>
+        <sub>Database</sub>
+      </td>
+      <td align="center">
+        <img src="https://cdn.worldvectorlogo.com/logos/redis.svg" width="48" height="48"/><br/>
+        <b>Redis</b><br/>
+        <sub>WebSockets & Cache</sub>
+      </td>
+      <td align="center">
+        <img src="https://cdn.worldvectorlogo.com/logos/typescript.svg" width="48" height="48"/><br/>
+        <b>TypeScript</b><br/>
+        <sub>Type Safety</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<div align="center">
+  <details>
+    <summary><b>View Full Technology Stack</b></summary>
+    <br/>
+    <table>
+      <tr><th>Layer</th><th>Technology</th></tr>
+      <tr><td>Frontend UI</td><td>Next.js, React, TypeScript, TailwindCSS</td></tr>
+      <tr><td>State Management</td><td>React Context, SWR for data fetching</td></tr>
+      <tr><td>Backend API</td><td>Django, Django REST Framework</td></tr>
+      <tr><td>Real-time</td><td>Django Channels, WebSockets, Redis</td></tr>
+      <tr><td>Database</td><td>PostgreSQL</td></tr>
+      <tr><td>Caching</td><td>Redis</td></tr>
+      <tr><td>Media Storage</td><td>BunnyNet CDN</td></tr>
+      <tr><td>Authentication</td><td>JWT, Session-based Auth</td></tr>
+      <tr><td>Deployment</td><td>Docker, CI/CD Pipeline</td></tr>
+    </table>
+  </details>
+</div>
+
+<!-- GETTING STARTED -->
+<h2 align="center">⚙️ Installation</h2>
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://i.imgur.com/QvtALE3.png" width="64" height="64"/><br/>
+        <h3>Prerequisites</h3>
+        <ul align="left">
+          <li>Python 3.8+</li>
+          <li>Node.js 14+</li>
+          <li>PostgreSQL 12+</li>
+          <li>Redis 6+</li>
+        </ul>
+      </td>
+      <td align="center">
+        <img src="https://i.imgur.com/AizTPCk.png" width="64" height="64"/><br/>
+        <h3>Quick Start</h3>
+        <p align="left">
+          Clone the repo and follow our <a href="#backend-setup">detailed setup instructions</a> below to get started in minutes.
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="backend-setup">Backend Setup</h3>
+
+<details>
+<summary><b>View Detailed Backend Setup Steps</b></summary>
 
 1. Clone the repository
 ```bash
@@ -163,67 +271,27 @@ git clone https://github.com/shaongitbd/onuze.git
 cd onuze
 ```
 
-2. Create a `.env` file in the backend folder with all required values:
-
-```
-# Django Settings
-DEBUG=True
-SECRET_KEY=your_secret_key
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Database Settings
-DATABASE_URL=postgres://user:password@localhost:5432/dbname
-
-# Email Settings
-EMAIL_HOST=smtp.example.com
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-EMAIL_HOST_USER=your_email@example.com
-EMAIL_HOST_PASSWORD=your_password
-DEFAULT_FROM_EMAIL=your_email@example.com
-
-# Frontend URL
-FRONTEND_URL=http://localhost:3000
-
-# JWT Settings
-JWT_SECRET_KEY=your_jwt_secret
-JWT_ACCESS_TOKEN_LIFETIME=5
-JWT_REFRESH_TOKEN_LIFETIME=1440
-
-# CORS Settings
-CORS_ALLOWED_ORIGINS=http://localhost:3000
-
-# Redis (for Channels)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_URL=redis://localhost:6379/0
-
-# Media Storage (BunnyNet)
-USE_BUNNY_STORAGE=True
-BUNNY_STORAGE_API_KEY=your_api_key
-BUNNY_STORAGE_ZONE=your_zone
-BUNNY_STORAGE_REGION=de
-BUNNY_STORAGE_URL=your_storage_url
-```
-
-3. Create a virtual environment and install dependencies:
+2. Create and configure environment
 ```bash
+# Create virtual environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Set up environment variables (see .env.example for required values)
+cp .env.example .env
+# Edit .env with your configuration
 ```
 
-4. Run migrations:
+3. Initialize the database
 ```bash
 python manage.py migrate
-```
-
-5. Create a superuser (admin):
-```bash
 python manage.py createsuperuser
 ```
 
-6. Run the application:
+4. Run the application
 ```bash
 daphne reddit_clone.asgi:application
 ```
@@ -231,170 +299,204 @@ daphne reddit_clone.asgi:application
 The backend API will be available at `http://localhost:8000`
 </details>
 
-### Frontend Setup
+<h3>Frontend Setup</h3>
 
 <details>
-<summary>Expand Instructions</summary>
+<summary><b>View Detailed Frontend Setup Steps</b></summary>
 
-1. Navigate to the frontend directory:
+1. Navigate to the frontend directory
 ```bash
 cd frontend
 ```
 
-2. Create a `.env.local` file:
-```
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-3. Install dependencies:
+2. Set up environment
 ```bash
+# Install dependencies
 npm install
+
+# Configure environment variables
+cp .env.example .env.local
+# Edit .env.local with your configuration
 ```
 
-4. Run the development server:
+3. Start development server
 ```bash
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:3000`
-
-5. For production build:
+4. For production
 ```bash
 npm run build
 npm start
 ```
+
+The frontend will be available at `http://localhost:3000`
 </details>
 
-## 📖 API Documentation
+<!-- API DOCUMENTATION -->
+<h2 align="center">📊 API Reference</h2>
 
-We provide a comprehensive API that powers our platform's functionality. Detailed documentation for each endpoint is available in separate markdown files.
-
-<details>
-<summary>Community Endpoints</summary>
-
-#### Collection Endpoints
-- `GET /communities/` - List all communities
-- `POST /communities/` - Create a new community
-- `GET /communities/popular/` - Get top communities by member count
-
-#### Detail Endpoints
-- `GET /communities/{path}/` - Get community details
-- `PUT /communities/{path}/` - Update a community (owner only)
-- `PATCH /communities/{path}/` - Partially update a community
-- `DELETE /communities/{path}/` - Delete a community (owner only)
-
-[See all community endpoints](./COMMUNITIES_API.md)
-</details>
-
-<details>
-<summary>Post Endpoints</summary>
-
-#### Collection Endpoints
-- `GET /posts/` - List all posts with filtering options
-- `POST /posts/` - Create a new post
-- `GET /posts/pinned/` - Get pinned posts
-
-#### Detail Endpoints
-- `GET /posts/{path}/` - Get a specific post
-- `PUT /posts/{path}/` - Update a post (owner only)
-- `PATCH /posts/{path}/` - Partially update a post
-- `DELETE /posts/{path}/` - Delete a post (owner/moderator only)
-
-[See all post endpoints](./POSTS_API.md)
-</details>
-
-<details>
-<summary>Comment Endpoints</summary>
-
-#### Collection Endpoints
-- `GET /comments/` - List all comments with filtering options
-- `POST /comments/` - Create a new comment
-
-#### Detail Endpoints
-- `GET /comments/{id}/` - Get a specific comment
-- `PUT /comments/{id}/` - Update a comment (owner only)
-- `PATCH /comments/{id}/` - Partially update a comment
-- `DELETE /comments/{id}/` - Delete a comment (owner only)
-
-[See all comment endpoints](./COMMENTS_API.md)
-</details>
-
-<details>
-<summary>Other Endpoints</summary>
-
-- **Search API** - [Details](./SEARCH_API.md)
-- **Media Upload API** - For images and videos
-- **Vote API** - [Details](./UPLOADS_API.md)
-- **Notification API** - [Details](./NOTIFICATIONS_API.md)
-
-</details>
-
-## 🤝 Contributing
-
-We welcome contributions from the community! Here's how you can help:
-
-### Contributing Guidelines
-
-1. **Fork the repository**
-2. **Create a new branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. **Make your changes**
-4. **Run tests**
-5. **Submit a pull request**
-
-### Code of Conduct
-
-Please note that this project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.
-
-## 📈 Project Stats
+<p align="center">Our comprehensive API powers all platform functionality with clean, RESTful endpoints.</p>
 
 <div align="center">
-  <img src="https://img.shields.io/github/stars/shaongitbd/onuze?style=social" alt="GitHub stars" />
-  <img src="https://img.shields.io/github/forks/shaongitbd/onuze?style=social" alt="GitHub forks" />
-  <img src="https://img.shields.io/github/issues/shaongitbd/onuze" alt="GitHub issues" />
-  <img src="https://img.shields.io/github/last-commit/shaongitbd/onuze" alt="Last commit" />
+  <table>
+    <tr>
+      <td align="center" width="20%">
+        <img src="https://i.imgur.com/DVSe5Bl.png" width="48" height="48"/><br/>
+        <a href="./COMMUNITIES_API.md">Communities API</a>
+      </td>
+      <td align="center" width="20%">
+        <img src="https://i.imgur.com/DAxNbw3.png" width="48" height="48"/><br/>
+        <a href="./POSTS_API.md">Posts API</a>
+      </td>
+      <td align="center" width="20%">
+        <img src="https://i.imgur.com/vQKK0g7.png" width="48" height="48"/><br/>
+        <a href="./COMMENTS_API.md">Comments API</a>
+      </td>
+      <td align="center" width="20%">
+        <img src="https://i.imgur.com/s0MDamz.png" width="48" height="48"/><br/>
+        <a href="./SEARCH_API.md">Search API</a>
+      </td>
+      <td align="center" width="20%">
+        <img src="https://i.imgur.com/GKnHesD.png" width="48" height="48"/><br/>
+        <a href="./NOTIFICATIONS_API.md">Notifications API</a>
+      </td>
+    </tr>
+  </table>
 </div>
 
-## 📜 License
+<p align="center">
+  <a href="./API_OVERVIEW.md">📚 Explore Full API Documentation</a>
+</p>
 
-**CC BY-NC 4.0 with additional attribution requirement**
+<!-- CONTRIBUTING -->
+<h2 align="center">🤝 Contributing</h2>
 
-This project is licensed under Creative Commons Attribution-NonCommercial 4.0 International with additional requirements:
+<p align="center">We welcome contributions of all sizes! Here's how you can help:</p>
 
-1. You must give **clear attribution** to the original author.
-2. If used on a **public-facing website**, a visible credit such as "Powered by Onuze" with a link to this repository must be displayed.
-3. Commercial use, redistribution for profit, or use in paid services is **strictly prohibited** without a separate commercial license agreement.
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="33%">
+        <img src="https://i.imgur.com/uDEA2CN.png" width="48" height="48"/><br/>
+        <h3>Report Issues</h3>
+        <p>Help us identify bugs and suggest improvements</p>
+      </td>
+      <td align="center" width="33%">
+        <img src="https://i.imgur.com/FJ3RLxW.png" width="48" height="48"/><br/>
+        <h3>Submit PRs</h3>
+        <p>Code fixes and feature enhancements welcome</p>
+      </td>
+      <td align="center" width="33%">
+        <img src="https://i.imgur.com/0uomJbj.png" width="48" height="48"/><br/>
+        <h3>Spread the Word</h3>
+        <p>Star the repo and share with others</p>
+      </td>
+    </tr>
+  </table>
+</div>
 
-## 👥 Team
+<details>
+<summary><b>Contribution Guidelines</b></summary>
+
+1. **Fork the repository**
+2. **Create a feature branch**
+   ```bash
+   git checkout -b feature/your-amazing-feature
+   ```
+3. **Make your changes**
+4. **Run tests to ensure quality**
+5. **Submit a pull request**
+
+We follow a [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming community for all contributors.
+</details>
+
+<!-- TEAM SECTION -->
+<h2 align="center">👥 Meet the Team</h2>
 
 <div align="center">
   <a href="https://github.com/shaongitbd">
-    <img src="https://github.com/shaongitbd.png" width="100" height="100" style="border-radius:50%"/>
+    <img src="https://github.com/shaongitbd.png" width="100" height="100" style="border-radius:50%; border: 3px solid #FF424D;"/>
     <br/>
     <b>Shao</b>
     <br/>
-    <i>Lead Developer</i>
+    <i>Lead Developer & Creator</i>
   </a>
 </div>
 
-<br/>
-
-## 📞 Support
-
-Need help? Feel free to reach out:
-
-- 📧 Email: [shaongit@gmail.com](mailto:shaongit@gmail.com)
-- 🌐 Website: [onuze.me](https://onuze.me)
-
----
+<!-- PROJECT STATS -->
+<h2 align="center">📈 Project Stats</h2>
 
 <div align="center">
-  <sub>If you found this project helpful, please consider giving it a ⭐️!</sub>
+  <a href="https://github.com/shaongitbd/onuze/stargazers">
+    <img src="https://img.shields.io/github/stars/shaongitbd/onuze?style=for-the-badge&color=yellow" alt="Stars" />
+  </a>
+  <a href="https://github.com/shaongitbd/onuze/network/members">
+    <img src="https://img.shields.io/github/forks/shaongitbd/onuze?style=for-the-badge&color=blue" alt="Forks" />
+  </a>
+  <a href="https://github.com/shaongitbd/onuze/issues">
+    <img src="https://img.shields.io/github/issues/shaongitbd/onuze?style=for-the-badge" alt="Issues" />
+  </a>
+  <a href="https://github.com/shaongitbd/onuze/pulls">
+    <img src="https://img.shields.io/github/issues-pr/shaongitbd/onuze?style=for-the-badge&color=brightgreen" alt="Pull Requests" />
+  </a>
+</div>
+
+<!-- LICENSE INFO -->
+<h2 align="center">📜 License</h2>
+
+<div align="center">
+  <img src="https://img.shields.io/badge/License-CC_BY_NC_4.0-lightgrey?style=for-the-badge" alt="CC BY-NC 4.0 License" />
+</div>
+
+<p align="center">
+  This project is licensed under <b>Creative Commons Attribution-NonCommercial 4.0 International</b> with additional requirements:
+</p>
+
+<ol align="center">
+  <li>You must give <b>clear attribution</b> to the original author.</li>
+  <li>If used on a <b>public-facing website</b>, a visible credit must be shown.</li>
+  <li>Commercial use requires a separate commercial license agreement.</li>
+</ol>
+
+<!-- SUPPORT SECTION -->
+<h2 align="center">📞 Support</h2>
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://i.imgur.com/KEoRBn9.png" width="48" height="48"/><br/>
+        <b>Email</b><br/>
+        <a href="mailto:shaongit@gmail.com">shaongit@gmail.com</a>
+      </td>
+      <td align="center">
+        <img src="https://i.imgur.com/6qW2MiY.png" width="48" height="48"/><br/>
+        <b>Website</b><br/>
+        <a href="https://onuze.me">onuze.me</a>
+      </td>
+      <td align="center">
+        <img src="https://i.imgur.com/PmmIJne.png" width="48" height="48"/><br/>
+        <b>GitHub</b><br/>
+        <a href="https://github.com/shaongitbd">@shaongitbd</a>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- FOOTER WITH CREATIVE ELEMENTS -->
+<p align="center">
+  <img src="https://i.imgur.com/waxVImv.png" alt="Colorful Separator" width="600" height="16">
+</p>
+
+<div align="center">
+  <!-- ANIMATED FOOTER -->
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=24&duration=3000&pause=1000&color=FF424D&center=true&vCenter=true&width=435&lines=Thank+you+for+visiting!;Star+if+you+like+what+you+see!;Let's+build+communities+together!" alt="Thank You Message" />
+  
   <br/>
   <br/>
+  
   <a href="https://onuze.me">
-    <img src="https://img.shields.io/badge/Built_with_❤️_by-Shao-FF424D?style=for-the-badge" alt="Built with love" />
+    <img src="https://img.shields.io/badge/BUILT_WITH_❤️_BY-SHAO-FF424D?style=for-the-badge" alt="Built with love" />
   </a>
 </div>

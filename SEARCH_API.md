@@ -1,6 +1,6 @@
-# SecureThread - Search API Endpoints
+# Onuze - Search API Endpoints
 
-This document describes the available API endpoints for searching content in the SecureThread application.
+This document describes the available API endpoints for searching content in the Onuze application.
 
 ## Core Search Endpoints
 

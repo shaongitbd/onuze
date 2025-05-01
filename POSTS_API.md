@@ -1,6 +1,6 @@
 # Onuze - Posts API Endpoints
 
-This document describes the available API endpoints for managing posts in the SecureThread application.
+This document describes the available API endpoints for managing posts in the Onuze application.
 
 ## Core Post Endpoints
 

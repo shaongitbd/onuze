@@ -1,6 +1,6 @@
 # Onuze - Communities API Endpoints
 
-This document describes the available API endpoints for managing communities (subreddits) in  SecureThread .
+This document describes the available API endpoints for managing communities (subreddits) in  Onuze .
 
 ## Core Community Endpoints
 

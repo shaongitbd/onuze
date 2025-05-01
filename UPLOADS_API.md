@@ -1,6 +1,6 @@
-# SecureThread - Uploads API Endpoints
+# Onuze - Uploads API Endpoints
 
-This document describes the available API endpoints for uploading media files in the SecureThread application.
+This document describes the available API endpoints for uploading media files in the Onuze application.
 
 ## Core Upload Endpoints
 

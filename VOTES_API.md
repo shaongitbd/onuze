@@ -1,6 +1,6 @@
-# SecureThread - Votes API Endpoints
+# Onuze - Votes API Endpoints
 
-This document describes the available API endpoints for voting on content in the SecureThread application.
+This document describes the available API endpoints for voting on content in the Onuze application.
 
 ## Core Vote Endpoints
 

@@ -1,6 +1,6 @@
 # secure Thread - Notifications API Endpoints
 
-This document describes the available API endpoints for handling user notifications in the SecureThread application.
+This document describes the available API endpoints for handling user notifications in the Onuze application.
 
 ## Core Notification Endpoints
 

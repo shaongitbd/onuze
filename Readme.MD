@@ -34,7 +34,7 @@
   </p>
   
   <!-- PREVIEW IMAGE -->
-  <img src="https://i.imgur.com/FBoDVai.png" alt="Onuze Preview" style="width: 90%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);" />
+  <img src="https://imgur.com/sqgX1OJ.png" alt="Onuze Live Website Screenshot" style="width: 90%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);" />
 </div>
 
 <!-- GRADIENT SEPARATOR -->
@@ -171,7 +171,7 @@
 
 <p align="center">
   <a href="https://onuze.me" target="_blank">
-    <img src="https://i.imgur.com/iHg3h9V.png" alt="Onuze Demo" style="width:90%; border-radius:10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);" />
+    <img src="https://imgur.com/sqgX1OJ.png" alt="Onuze Demo" style="width:90%; border-radius:10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);" />
   </a>
 </p>
 

@@ -5,7 +5,7 @@
 
   <h1>
     <img src="https://i.imgur.com/sqgX1OJ;Community+2.0" alt="Typing SVG" />
-    ![Alt text](https://i.imgur.com/sqgX1OJ;Community+2.0 "Live")
+   
   </h1>
 
   <p align="center">

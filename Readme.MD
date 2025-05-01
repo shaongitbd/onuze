@@ -1,7 +1,7 @@
 <div align="center">
   
   <!-- HEADER SECTION -->
-  <img src="https://redify.b-cdn.net/post-images/posts/05cb98ce3aa94d34b46351b39c71fb74_9e6fb397-c664-497f-ab48-15a1c4eb2e45.png" alt="Onuze" width="300">
+  <img src="https://redify.b-cdn.net/post-images/posts/05cb98ce3aa94d34b46351b39c71fb74_9e6fb397-c664-497f-ab48-15a1c4eb2e45.png" alt="Onuze" width="340">
 
 
 
@@ -280,18 +280,60 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Set up environment variables (see .env.example for required values)
-cp .env.example .env
-# Edit .env with your configuration
+# Create .env file in the backend directory
+cd backend  # Navigate to backend directory
+touch .env  # Create .env file (On Windows: type nul > .env)
 ```
 
-3. Initialize the database
+3. Add the following configuration to your `.env` file:
+```
+# Django Settings
+DEBUG=True
+SECRET_KEY=your_super_secret_key_change_this_in_production
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Database Settings
+DATABASE_URL=postgres://postgres:password@localhost:5432/onuze
+
+# Email Settings
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your_email@gmail.com
+EMAIL_HOST_PASSWORD=your_app_password
+DEFAULT_FROM_EMAIL=your_email@gmail.com
+
+# Frontend URL
+FRONTEND_URL=http://localhost:3000
+
+# JWT Settings
+JWT_SECRET_KEY=another_secure_secret_key_change_in_production
+JWT_ACCESS_TOKEN_LIFETIME=5  # in minutes
+JWT_REFRESH_TOKEN_LIFETIME=1440  # in minutes (24 hours)
+
+# CORS Settings
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+
+# Redis (for Channels)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_URL=redis://localhost:6379/0
+
+# Media Storage (BunnyNet)
+USE_BUNNY_STORAGE=True
+BUNNY_STORAGE_API_KEY=your_bunny_storage_api_key
+BUNNY_STORAGE_ZONE=your_storage_zone
+BUNNY_STORAGE_REGION=de
+BUNNY_STORAGE_URL=https://your-zone.b-cdn.net
+```
+
+4. Initialize the database
 ```bash
 python manage.py migrate
 python manage.py createsuperuser
 ```
 
-4. Run the application
+5. Run the application
 ```bash
 daphne reddit_clone.asgi:application
 ```

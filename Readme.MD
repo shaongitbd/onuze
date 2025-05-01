@@ -6,7 +6,7 @@
 
 
   <p align="center">
-    <em>The next evolution of community platforms with real-time engagement & stunning UI</em>
+    <em>Unfiltered. Uncensored. Unapologetically.</em>
   </p>
   
   <!-- BADGES -->

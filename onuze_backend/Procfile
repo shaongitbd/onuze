@@ -1,1 +1,1 @@
-web: gunicorn onuze.wsgi --log-file - 
+web: gunicorn onuze_backend.wsgi --log-file 

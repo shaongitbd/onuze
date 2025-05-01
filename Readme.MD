@@ -1,6 +1,52 @@
 # SecureThread
 
-Welcome to the official SecureThread repository. This application is built by [shaongitbd](https://github.com/shaongitbd). For any problem feel free to mail me at shaongit@gmail.com
+Welcome to the official github repo of onuze( https://onuze.me). This application is built by [shaongitbd](https://github.com/shaongitbd). For any problem feel free to mail me at shaongit@gmail.com
+
+
+Visit our website at https://onuze.me
+
+
+
+Currently supported Features
+
+Community
+ - ✅ Community Creation
+ - ✅ Community Post
+ - ✅ Filter by tags
+ - ✅ Member Ban/Unban system
+ - ✅ Ban appeal system (parmanent/ days/weeks/months )
+
+ Post
+  - ✅ Post Creation (Normal post and post with image/video)
+  - ✅ Deleting Post
+  - ✅ Pin post (only mod)
+  - ✅ Unlock/Lock post
+  - ✅ Reporting post
+  - ✅ Live comment fetching via websocket
+
+Comment 
+  - ✅ Commenting
+  - ✅ Nested  comment reply
+  - ✅ comment edit/Delete
+  - ✅ Comment report
+
+Notification
+  - ✅ Instant comment/post notification
+  - ✅ Ban/unban notification
+
+Search 
+  - ✅ Post/comment/community search with filtering
+
+User profile
+  - ✅ Post/ comment by users with filters.
+
+Moderator Tools:
+  - ✅ Community edit
+  - ✅ Memeber apeal approval /rejection system
+  - ✅ Member Unban/ban system 
+
+
+
 
 ## License
 

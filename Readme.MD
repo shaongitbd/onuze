@@ -11,11 +11,8 @@
   
   <!-- BADGES -->
   <p align="center">
-    <a href="https://onuze.me">
       <img src="https://img.shields.io/badge/ONUZE-Visit_Live_Demo-FF424D?style=for-the-badge&logo=Safari&logoColor=white" alt="Visit Website" />
-    </a>
     <br />
-    <a href="https://onuze.me"><img src="https://img.shields.io/website-up-down-green-red/http/onuze.me.svg" alt="Website Status" /></a>
     <img src="https://img.shields.io/github/license/shaongitbd/onuze?label=License&color=lightgrey" alt="License" />
     <img src="https://img.shields.io/badge/Made%20with-Django-092E20?style=flat&logo=django&logoColor=white" alt="Made with Django" />
     <img src="https://img.shields.io/badge/Made%20with-Next.js-000000?style=flat&logo=next.js&logoColor=white" alt="Made with Next.js" />
